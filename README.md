@@ -12,6 +12,12 @@ Static site, no build step: open `index.html` in a browser.
 - `app.js` — pages, filters and the illustrated court pictures.
 - `images/` — photos and the logo (`logo.svg`).
 
+## Publishing an update
+
+After changing `data.js` or `app.js`, raise the number in `data.js?v=3` and
+`app.js?v=3` near the bottom of `index.html`. Browsers then fetch the new files
+straight away instead of reusing old copies for a few minutes.
+
 ## Where the facts come from
 
 - Public pickleball courts and open play hours: the City of San Diego
