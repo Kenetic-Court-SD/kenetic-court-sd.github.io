@@ -898,9 +898,17 @@ function FaqPage() {
 /* ---------- contact ---------- */
 // Submissions go to Formspree (set FORMSPREE_URL in data.js). Without it the form is switched off.
 const formReady = () => typeof FORMSPREE_URL === "string" && FORMSPREE_URL.startsWith("https://");
+const SUGGESTION_TYPES = { new_court: "New court suggestion", report_outdated: "Outdated info report" };
 async function saveSuggestion(data) {
-  const res = await fetch(FORMSPREE_URL, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(data) });
-  if (!res.ok) throw new Error("Form service refused the submission");
+  if (data._gotcha) return; // hidden field only spam bots fill in: quietly drop it
+  const kind = SUGGESTION_TYPES[data.type] || "Message";
+  const payload = { _subject: `Kinetic Court SD: ${kind}`, type: kind, name: data.name.trim() || "(not given)", message: data.message.trim() };
+  if (data.email.trim()) payload.email = data.email.trim(); // Formspree uses "email" as the reply-to address
+  const res = await fetch(FORMSPREE_URL, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const info = await res.json().catch(() => ({}));
+    throw new Error((info.errors || []).map((e) => e.message).join(" ") || "The form service refused the submission.");
+  }
 }
 
 const fieldLabel = (id, text) => `<label for="${id}" class="block ${LBL} text-[11px] text-foreground">${text}</label>`;
@@ -918,18 +926,19 @@ function ContactForm() {
   return `
   <form id="contact-form" novalidate class="space-y-6 rounded-3xl border-2 border-border bg-background p-7 hard-shadow sm:p-10">
     <div class="grid gap-6 sm:grid-cols-2">
-      <div class="space-y-2">${fieldLabel("name", "Name")}<input id="name" name="submitter_name" placeholder="Your name" class="${inputCls}" /></div>
-      <div class="space-y-2">${fieldLabel("email", "Email")}<input id="email" name="submitter_email" type="email" placeholder="you@email.com" class="${inputCls}" /></div>
+      <div class="space-y-2">${fieldLabel("name", "Name")}<input id="name" name="name" autocomplete="name" placeholder="Your name" class="${inputCls}" /></div>
+      <div class="space-y-2">${fieldLabel("email", "Email")}<input id="email" name="email" type="email" autocomplete="email" placeholder="you@email.com" class="${inputCls}" /></div>
     </div>
     <div class="space-y-2">
       ${fieldLabel("type", "Submission type")}
-      <select id="type" name="suggestion_type" class="${inputCls}">
+      <select id="type" name="type" class="${inputCls}">
         <option value="new_court">Suggest a new court</option>
         <option value="report_outdated">Report outdated info</option>
       </select>
     </div>
     <div class="space-y-2">${fieldLabel("message", "Message")}<textarea id="message" name="message" rows="5" placeholder="Tell us about the court or what needs updating…" class="${inputCls}"></textarea></div>
-    <p id="form-error" class="hidden font-body text-sm text-destructive"></p>
+    <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" class="hidden" />
+    <p id="form-error" role="alert" class="hidden font-body text-sm text-destructive"></p>
     ${formReady() ? `<button type="submit" class="${BTN_SUN} w-full disabled:opacity-50">
       <span>Send submission</span>${icon.send("h-4 w-4")}
     </button>` : `<p class="rounded-2xl bg-secondary p-4 text-center font-body text-base text-foreground">This form opens soon. We're still connecting it, so nothing can be sent yet.</p>`}
@@ -1096,14 +1105,19 @@ app.addEventListener("submit", async (e) => {
     err.classList.remove("hidden");
     return;
   }
+  if (data.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+    err.textContent = "That email address doesn't look right. Fix it or leave it blank.";
+    err.classList.remove("hidden");
+    return;
+  }
   const btn = form.querySelector("button[type=submit]");
   btn.disabled = true;
   btn.innerHTML = "<span>Sending…</span>";
   try {
     await saveSuggestion(data);
     document.getElementById("contact-slot").innerHTML = ContactThanks();
-  } catch {
-    err.textContent = "Something went wrong. Please try again.";
+  } catch (problem) {
+    err.textContent = `Your message was not sent. ${problem.message || ""} Please try again.`;
     err.classList.remove("hidden");
     btn.disabled = false;
     btn.innerHTML = `<span>Send submission</span>${icon.send("h-4 w-4")}`;

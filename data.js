@@ -687,7 +687,7 @@ const GEO = {
 
 // Where Contact form submissions are sent. Paste your Formspree form link here,
 // for example "https://formspree.io/f/abcdwxyz". While this is empty the form is switched off.
-const FORMSPREE_URL = "";
+const FORMSPREE_URL = "https://formspree.io/f/mbgodpjz";
 
 // Official schedules and documents, shown in the "Schedules & PDFs" section.
 const DOCUMENTS = [
