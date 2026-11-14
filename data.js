@@ -330,7 +330,7 @@ const VENUES = [
     website: "https://www.carlsbadca.gov/Home/Components/FacilityDirectory/FacilityDirectory/44/7417", source: { label: "City of Carlsbad facility directory", url: "https://www.carlsbadca.gov/Home/Components/FacilityDirectory/FacilityDirectory/44/7417" },
   },
   {
-    sport: "pickleball", name: "Melba Bishop Park", area: "Oceanside", address: "5306 N River Rd, Oceanside, CA", access: "public", featured: true, wow: 4,
+    sport: "pickleball", name: "Melba Bishop Park", area: "Oceanside", address: "5306 N River Rd, Oceanside, CA", zip: "92057", access: "public", featured: true, wow: 4,
     courts: "11 courts", setting: "Outdoor", cost: "Free outdoors · indoor gym drop-in $3",
     blurb: "Eleven outdoor courts. Courts 1–3 are always kept for open play, and the rest are first come, first served when no permitted group is using them.",
     sessions: [S(EVERY_DAY, "6:00 am – 9:00 pm", "Outdoor", "Courts 1–3 always open play")],
@@ -366,7 +366,7 @@ const VENUES = [
     sport: "pickleball", name: "Innovation Park", area: "San Marcos", address: "1151 Armorlite Dr, San Marcos, CA 92069", phone: "(760) 744-9000 ext. 3500",
     access: "public", wow: 3, courts: "Pickleball courts", setting: "Outdoor", cost: "Free",
     sessions: [S(EVERY_DAY, "9:00 am – sunset", "Outdoor")],
-    website: "https://www.san-marcos.net/Home/Components/FacilityDirectory/FacilityDirectory/701/1078", source: { label: "City of San Marcos facility directory", url: "https://www.san-marcos.net/Home/Components/FacilityDirectory/FacilityDirectory/701/1078" },
+    website: "https://www.sanmarcosca.gov/Parks-Recreation/Find-Parks-Pools-Facilities/Innovation-Park", source: { label: "City of San Marcos park page", url: "https://www.sanmarcosca.gov/Parks-Recreation/Find-Parks-Pools-Facilities/Innovation-Park" },
   },
   {
     sport: "pickleball", name: "Coronado Cays Park", area: "Coronado", address: "Coronado Cays Park, Coronado, CA 92118", phone: "(619) 522-2650",
@@ -547,7 +547,7 @@ const VENUES = [
   },
   {
     sport: "racquetball", name: "San Diego Tennis & Racquet Club", area: "Bay Park", address: "4848 Tecolote Rd, San Diego, CA 92110", access: "private", accessNote: "Private club", wow: 3,
-    courts: "Racquetball at a 10-acre club", setting: "Indoor", cost: "Membership", website: "https://www.sdtrc.com", verified: false,
+    courts: "Racquetball at a 10-acre club", setting: "Indoor", cost: "Membership", website: "https://sdtrc.com", verified: false,
   },
 
   /* ===================== SQUASH ===================== */
@@ -562,10 +562,6 @@ const VENUES = [
   {
     sport: "squash", name: "Bay Club Carmel Valley", area: "Carmel Valley", access: "private", accessNote: "Members only", featured: true, wow: 4, image: "images/814205e07.png",
     courts: "Squash courts", setting: "Indoor", cost: "Membership", website: "https://www.bayclubs.com/amenity/squash", verified: false,
-  },
-  {
-    sport: "squash", name: "San Diego Squash", area: "Mira Mesa", address: "9370 Waples St, Suite 101, San Diego, CA 92121", access: "private", featured: true, wow: 3, image: "images/5d771cd9e.png",
-    courts: "Squash courts", setting: "Indoor", cost: "See website", website: "https://sdsquash.com", verified: false,
   },
   {
     sport: "squash", name: "UC San Diego RIMAC (Squash)", photo: "rimac", area: "La Jolla", address: "9860 Hopkins Dr, La Jolla, CA 92093", phone: "(858) 534-3557",
@@ -731,7 +727,7 @@ const DOCUMENTS = [
 const ECOSYSTEM_LINKS = [
   { label: "City of San Diego Parks & Recreation", href: "https://www.sandiego.gov/parks-and-recreation" },
   { label: "USA Pickleball", href: "https://usapickleball.org" },
-  { label: "USTA Southern California — Tennis", href: "https://www.sctennis.usta.com" },
+  { label: "USTA Southern California — Tennis", href: "https://www.ustasocal.com" },
   { label: "US Squash", href: "https://www.ussquash.org" },
   { label: "USA Table Tennis", href: "https://www.teamusa.org/usa-table-tennis" },
   { label: "Pickleheads — San Diego Atlas", href: "https://www.pickleheads.com/courts/us/california/san-diego" },

@@ -18,6 +18,17 @@ VENUES.forEach((v) => {
   // "Coolest courts with the most open play first": looks count double, plus one point per open play day.
   v.score = (v.wow || 1) * 2 + v.playDays.length + (v.verified === false ? -3 : 0) + (v.closed ? -10 : 0);
 });
+// State, city and ZIP code come from the end of each address ("…, Carlsbad, CA 92011").
+const STATE_NAMES = { CA: "California" };
+VENUES.forEach((v) => {
+  const m = v.address && /,\s*([^,]+),\s*([A-Z]{2})(?:\s+(\d{5}))?\s*$/.exec(v.address);
+  v.city = v.city || (m ? m[1].trim() : "");
+  v.state = v.state || (m ? m[2] : "CA");
+  v.zip = v.zip || (m && m[3]) || "";
+});
+// Venues without an address: use their area when it is a city we know, otherwise San Diego.
+const KNOWN_CITIES = new Set(VENUES.map((v) => v.city).filter(Boolean));
+VENUES.forEach((v) => { if (!v.city && v.area !== "Countywide") v.city = KNOWN_CITIES.has(v.area) ? v.area : "San Diego"; });
 const byScore = (a, b) => b.score - a.score || a.name.localeCompare(b.name);
 const findVenue = (id) => VENUES.find((v) => v.id === id);
 const hasOpenPlay = (sport) => VENUES.some((v) => v.sport === sport && v.sessions.length);
@@ -261,6 +272,7 @@ let userLoc = null;      // the visitor's [lat, lng] once they press "Near me"
 let sortNear = false;    // list the directory nearest first
 let locMsg = "";         // message shown under the Near me button
 let mapObj = null;
+let venueMapObj = null;
 let showAllPlay = false; // open play list: first 10, or everything
 let showAllDir = false;  // directory: first 20, or everything
 const moreButton = (attr, n, what) => `<div class="mt-6 text-center"><button ${attr} class="${BTN} border-2 border-current">Show all ${n} ${what} ${icon.chevronDown("h-4 w-4")}</button></div>`;
@@ -271,7 +283,15 @@ let accessFilter = "all"; // all | public | private
 let currentDay = TODAY;
 let dirQuery = "";
 
-const sportVenues = () => VENUES.filter((v) => v.sport === currentSport && (accessFilter === "all" || v.access === accessFilter));
+let locTab = "city";   // which location tab is open: state | city | zip
+let loc = null;        // the chosen location, e.g. { type: "city", value: "Carlsbad" }, or null for everywhere
+let zipQuery = "";
+const locMatch = (v) => !loc || v[loc.type] === loc.value;
+const locLabel = () => !loc ? "" : loc.type === "state" ? (STATE_NAMES[loc.value] || loc.value) : loc.type === "zip" ? `ZIP ${loc.value}` : loc.value;
+const whereWord = () => (loc ? ` in ${locLabel()}` : "");
+// Venues for the chosen sport and access, before and after the location filter.
+const baseVenues = () => VENUES.filter((v) => v.sport === currentSport && (accessFilter === "all" || v.access === accessFilter));
+const sportVenues = () => baseVenues().filter(locMatch);
 
 function Hero() {
   return `
@@ -315,9 +335,51 @@ function FilterBar() {
       <div class="flex items-center gap-1 overflow-x-auto">
         <span class="mr-1 w-14 shrink-0 ${LBL} text-[10px] text-muted-foreground">Access</span>
         ${pill("data-access", "all", "All", accessFilter === "all")}${pill("data-access", "public", "Public", accessFilter === "public")}${pill("data-access", "private", "Private", accessFilter === "private")}
+        ${loc ? `<button data-loc-clear aria-label="Clear location ${esc(locLabel())}" class="ml-2 flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 ${LBL} text-xs text-primary-foreground">${icon.mapPin("h-3.5 w-3.5")} ${esc(locLabel())} <span aria-hidden="true">✕</span></button>` : ""}
       </div>
     </div>
   </div>`;
+}
+
+// Browse by State, City or ZIP code. Counts follow the chosen sport and access.
+function locOptions(type) {
+  const counts = new Map();
+  baseVenues().forEach((v) => { if (v[type]) counts.set(v[type], (counts.get(v[type]) || 0) + 1); });
+  return [...counts.entries()].sort((a, b) => (type === "zip" ? a[0].localeCompare(b[0]) : b[1] - a[1] || a[0].localeCompare(b[0])));
+}
+const locChip = (type, value, label, count) => {
+  const on = loc && loc.type === type && loc.value === value;
+  return `<button data-loc="${type}:${esc(value)}" aria-pressed="${!!on}" class="flex items-center gap-2 rounded-full py-2 pl-4 pr-2 ${LBL} text-xs transition-colors ${on ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-sand"}">${esc(label)}<span class="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] ${on ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}">${count}</span></button>`;
+};
+function ZipChips() {
+  const q = zipQuery.trim(), zips = locOptions("zip").filter(([z]) => !q || z.startsWith(q));
+  if (!zips.length) return `<p class="font-body text-base text-muted-foreground">No ${accessWord()}${sportOf(currentSport).noun} listed in ZIP codes starting with “${esc(q)}”. Try the City tab, or use “Nearest to me” in the directory.</p>`;
+  return zips.map(([z, n]) => locChip("zip", z, z, n)).join("");
+}
+function LocationPanel() {
+  const tab = (id, label) => `<button data-loctab="${id}" role="tab" aria-selected="${locTab === id}" class="rounded-t-2xl px-5 py-3 font-display text-lg transition-colors ${locTab === id ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}">${label}</button>`;
+  const all = `<button data-loc-clear aria-pressed="${!loc}" class="rounded-full px-4 py-2 ${LBL} text-xs transition-colors ${loc ? "bg-secondary text-foreground hover:bg-sand" : "bg-foreground text-background"}">Everywhere</button>`;
+  const noAddress = baseVenues().filter((v) => !v.zip).length;
+  const body = locTab === "state"
+    ? `<div class="flex flex-wrap gap-2">${all}${locOptions("state").map(([st, n]) => locChip("state", st, STATE_NAMES[st] || st, n)).join("")}</div>
+       <p class="mt-4 font-body text-sm text-muted-foreground">The atlas covers San Diego County, California for now. More states will show up here as they are added.</p>`
+    : locTab === "city"
+    ? `<div class="flex flex-wrap gap-2">${all}${locOptions("city").map(([c, n]) => locChip("city", c, c, n)).join("")}</div>
+       <p class="mt-4 font-body text-sm text-muted-foreground">Cities follow each court's mailing address, so La Jolla is listed on its own.</p>`
+    : `<label class="block max-w-xs">
+         <span class="mb-2 block ${LBL} text-[10px] text-muted-foreground">Type a ZIP code</span>
+         <input id="zip-search" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" value="${esc(zipQuery)}" placeholder="e.g. 92109" class="h-11 w-full rounded-full border-2 border-input bg-background px-4 font-body text-base placeholder:text-muted-foreground focus-visible:border-ocean focus-visible:outline-none" />
+       </label>
+       <div id="zip-chips" class="mt-4 flex flex-wrap gap-2">${all}${ZipChips()}</div>
+       ${noAddress ? `<p class="mt-4 font-body text-sm text-muted-foreground">${noAddress} ${noAddress === 1 ? "listing has" : "listings have"} no confirmed ZIP code yet and only ${noAddress === 1 ? "shows" : "show"} under Everywhere${locTab === "zip" ? ", State or City" : ""}.</p>` : ""}`;
+  return `
+  <section id="where" class="relative scroll-mt-28 bg-secondary px-6 pt-10">
+    <div class="mx-auto max-w-7xl">
+      ${eyebrow("Browse by location")}
+      <div class="flex gap-1" role="tablist" aria-label="Browse by location">${tab("state", "State")}${tab("city", "City")}${tab("zip", "ZIP code")}</div>
+      <div class="rounded-b-3xl rounded-tr-3xl bg-background p-5 sm:p-6" role="tabpanel">${body}</div>
+    </div>
+  </section>`;
 }
 
 function VenueCard(v, i, stagger = true) {
@@ -345,10 +407,10 @@ const accessWord = () => (accessFilter === "all" ? "" : accessFilter + " ");
 const sectionTitle = (html) => `<h2 class="font-display text-5xl leading-[0.95] text-foreground sm:text-7xl">${html}</h2>`;
 
 function Featured(n) {
-  const list = sportVenues().filter((v) => v.featured).sort(byScore);
+  const list = loc ? sportVenues().sort(byScore).slice(0, 6) : sportVenues().filter((v) => v.featured).sort(byScore);
   const sport = sportOf(currentSport);
   return `
-  <section id="courts" class="relative bg-secondary px-6 py-20 sm:py-28">
+  <section id="courts" class="relative bg-secondary px-6 pb-20 pt-14 sm:pb-28 sm:pt-16">
     ${dots()}
     <div class="relative mx-auto max-w-7xl">
       <div class="mb-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -356,10 +418,10 @@ function Featured(n) {
           ${eyebrow(`${pad2(n)} · The Court Ledger`)}
           ${sectionTitle(`Featured<br>courts<span class="text-pop">.</span>`)}
         </div>
-        <p class="max-w-sm font-body text-base text-muted-foreground ${list.length ? "" : "hidden"}">The ${list.length} standout ${accessWord()}${sport.label.toLowerCase()} venues, ranked by how good the courts are${hasOpenPlay(currentSport) ? " and how many days a week they run open play" : ""}.</p>
+        <p class="max-w-sm font-body text-base text-muted-foreground ${list.length ? "" : "hidden"}">The ${list.length === 1 ? "top" : `${list.length} ${loc ? "top" : "standout"}`} ${accessWord()}${sport.label.toLowerCase()} ${list.length === 1 ? "venue" : "venues"}${whereWord()}, ranked by how good the courts are${hasOpenPlay(currentSport) ? " and how many days a week they run open play" : ""}.</p>
       </div>
       ${list.length ? `<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">${list.map((v, i) => VenueCard(v, i)).join("")}</div>`
-        : emptyState(`No featured ${accessWord()}${sport.noun} yet. ${accessFilter === "public" ? "We haven't confirmed any free public ones. Try Private, or tell us about one on the Contact page." : "Try switching the Access filter."}`)}
+        : emptyState(loc ? `No ${accessWord()}${sport.noun}${whereWord()} yet. Try another location, sport or access setting.` : `No featured ${accessWord()}${sport.noun} yet. ${accessFilter === "public" ? "We haven't confirmed any free public ones. Try Private, or tell us about one on the Contact page." : "Try switching the Access filter."}`)}
     </div>
   </section>`;
 }
@@ -388,7 +450,7 @@ function OpenPlay(n) {
           ${eyebrow(`${pad2(n)} · Open Play`, "text-background/60")}
           <h2 class="font-display text-5xl leading-[0.95] sm:text-7xl">Open play,<br>day by day<span class="text-pop">.</span></h2>
         </div>
-        <p class="max-w-sm font-body text-base text-background/75">Pick a day to see every ${accessWord()}${sport.label.toLowerCase()} spot with open play and the hours. Schedules change, so call ahead before a special trip.</p>
+        <p class="max-w-sm font-body text-base text-background/75">Pick a day to see every ${accessWord()}${sport.label.toLowerCase()} spot${whereWord()} with open play and the hours. Schedules change, so call ahead before a special trip.</p>
       </div>
       <div class="mb-8 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Day of the week">
         ${DAYS.map((d) => {
@@ -417,7 +479,7 @@ function OpenPlay(n) {
               </ul>
             </a>
           </li>`).join("")}
-      </ul>${!showAllPlay && today.length > 10 ? moreButton("data-more-play", today.length, "places") : ""}` : `<p class="rounded-3xl border-2 border-dashed border-background/25 px-6 py-10 text-center font-body text-base text-background/75">No ${accessWord()}open play listed for ${DAY_NAMES[currentDay]}. Try another day or switch the Access filter.</p>`}
+      </ul>${!showAllPlay && today.length > 10 ? moreButton("data-more-play", today.length, "places") : ""}` : `<p class="rounded-3xl border-2 border-dashed border-background/25 px-6 py-10 text-center font-body text-base text-background/75">No ${accessWord()}open play listed${whereWord()} for ${DAY_NAMES[currentDay]}. Try another day, location or access setting.</p>`}
       <p class="mt-8 font-body text-sm text-background/60">Public hours: City of San Diego pickleball list, updated 8/29/2026. Club hours: each club's website, checked ${DATA_CHECKED}. <a href="#/schedules" class="underline underline-offset-4 hover:text-pop">See the official schedules</a>.</p>
     </div>
   </section>`;
@@ -428,7 +490,7 @@ function DirectoryRows() {
   const near = sortNear && userLoc;
   const list = sportVenues().filter((v) => !q || `${v.name} ${v.area}`.toLowerCase().includes(q))
     .sort((a, b) => (near ? (distOf(a) ?? 9999) - (distOf(b) ?? 9999) : 0) || byScore(a, b));
-  if (!list.length) return emptyState(q ? `Nothing matches “${esc(dirQuery)}”.` : `No ${accessWord()}${sportOf(currentSport).noun} listed yet. Try switching the Access filter.`);
+  if (!list.length) return emptyState(q ? `Nothing matches “${esc(dirQuery)}”.` : `No ${accessWord()}${sportOf(currentSport).noun} listed${whereWord()} yet. Try another location or access setting.`);
   const shown = showAllDir || q ? list : list.slice(0, 20);
   return `<ul class="divide-y divide-border border-y border-border">
     ${shown.map((v) => `
@@ -458,7 +520,7 @@ function Directory(n) {
         <div class="max-w-2xl">
           ${eyebrow(`${pad2(n)} · The Full Directory`)}
           ${sectionTitle(`Every<br>court<span class="text-pop">.</span>`)}
-          <p class="mt-6 font-body text-base text-muted-foreground">${count ? `All ${count} ${accessWord()}${sport.noun} in the atlas, ${sortNear && userLoc ? "nearest first" : "best first"}.` : ""} Open any one for its schedule, address, phone number and official links.</p>
+          <p class="mt-6 font-body text-base text-muted-foreground">${count ? `${count === 1 ? "The 1" : `All ${count}`} ${accessWord()}${sport.noun}${loc ? whereWord() : " in the atlas"}, ${sortNear && userLoc ? "nearest first" : "best first"}.` : ""} Open any one for its schedule, address, phone number and official links.</p>
           <div class="mt-5 flex flex-wrap items-center gap-2">
             <span class="${LBL} text-[10px] text-muted-foreground">Sort</span>
             <button data-sort="best" aria-pressed="${!(sortNear && userLoc)}" class="rounded-full px-3.5 py-2 ${LBL} text-[11px] transition-colors ${sortNear && userLoc ? "bg-secondary text-foreground" : "bg-foreground text-background"}">Best first</button>
@@ -499,19 +561,24 @@ function MapSection(n) {
       <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-body text-sm text-muted-foreground">
         <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" style="background:${PIN_COLOR.public}"></span> Public</span>
         <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" style="background:${PIN_COLOR.private}"></span> Private club</span>
-        <span>${onMap} of ${all.length} ${accessWord()}${sportOf(currentSport).noun} are on the map${onMap < all.length ? "; the rest don't have a confirmed address yet" : ""}.</span>
+        <span>${onMap} of ${all.length} ${accessWord()}${sportOf(currentSport).noun}${whereWord()} are on the map${onMap < all.length ? "; the rest don't have a confirmed address yet" : ""}.</span>
       </div>
     </div>
   </section>`;
 }
 
+// Maps must be shut down before the page under them is replaced, or the map library
+// keeps animating elements that no longer exist.
+function closeMap(m) { if (m) { try { m.stop(); m.off(); m.remove(); } catch {} } return null; }
+function closeMaps() { mapObj = closeMap(mapObj); venueMapObj = closeMap(venueMapObj); }
+
 function initMap() {
   const el = document.getElementById("court-map");
-  if (mapObj) { mapObj.remove(); mapObj = null; }
+  mapObj = closeMap(mapObj);
   if (!el) return;
   if (!window.L) { el.innerHTML = `<p class="flex h-full items-center justify-center px-6 text-center font-body text-base text-muted-foreground">The map couldn't load. Check your connection and refresh.</p>`; return; }
   const list = sportVenues().filter((v) => v.geo);
-  mapObj = L.map(el, { scrollWheelZoom: false }).setView([32.85, -117.12], 10);
+  mapObj = L.map(el, { scrollWheelZoom: false, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false }).setView([32.85, -117.12], 10);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(mapObj);
   list.forEach((v) => {
     const icon = L.divIcon({ className: "court-pin", html: PIN(PIN_COLOR[v.access] || PIN_COLOR.public), iconSize: [30, 40], iconAnchor: [15, 39], popupAnchor: [0, -36] });
@@ -527,9 +594,9 @@ function initMap() {
   const pts = list.map((v) => v.geo);
   if (userLoc && pts.length) {
     const nearest = [...list].sort((a, b) => distOf(a) - distOf(b)).slice(0, 5).map((v) => v.geo);
-    mapObj.fitBounds([userLoc, ...nearest], { padding: [50, 50], maxZoom: 14 });
-  } else if (pts.length) mapObj.fitBounds(pts, { padding: [40, 40], maxZoom: 13 });
-  const m = mapObj; setTimeout(() => m === mapObj && m.invalidateSize(), 300);
+    mapObj.fitBounds([userLoc, ...nearest], { padding: [50, 50], maxZoom: 14, animate: false });
+  } else if (pts.length) mapObj.fitBounds(pts, { padding: [40, 40], maxZoom: 13, animate: false });
+  const m = mapObj; setTimeout(() => m === mapObj && m.invalidateSize({ animate: false }), 300);
 }
 
 function locateMe() {
@@ -579,7 +646,7 @@ function SportSections() {
   let n = 2;
   const featured = Featured(n++), open = OpenPlay(n);
   if (open) n++;
-  return FilterBar() + featured + open + MapSection(n++) + Directory(n++) + Schedules(n);
+  return FilterBar() + LocationPanel() + featured + open + MapSection(n++) + Directory(n++) + Schedules(n);
 }
 
 function HomePage() {
@@ -789,16 +856,15 @@ function nearbyCourts(v) {
         </div>`;
 }
 
-let venueMapObj = null;
 function initVenueMap() {
   const el = document.getElementById("venue-map");
-  if (venueMapObj) { venueMapObj.remove(); venueMapObj = null; }
+  venueMapObj = closeMap(venueMapObj);
   if (!el || !window.L) return;
   const v = findVenue(el.dataset.venue);
-  venueMapObj = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView(v.geo, 14);
+  venueMapObj = L.map(el, { scrollWheelZoom: false, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false }).setView(v.geo, 14);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(venueMapObj);
   L.marker(v.geo, { icon: L.divIcon({ className: "court-pin", html: PIN(PIN_COLOR[v.access] || PIN_COLOR.public), iconSize: [30, 40], iconAnchor: [15, 39] }), title: v.name, alt: v.name }).addTo(venueMapObj);
-  const m = venueMapObj; setTimeout(() => m === venueMapObj && m.invalidateSize(), 300);
+  const m = venueMapObj; setTimeout(() => m === venueMapObj && m.invalidateSize({ animate: false }), 300);
 }
 
 async function shareVenue() {
@@ -924,6 +990,7 @@ function render() {
   else if (path === "/facility-details") html = FacilitiesPage();
   else if (detail) html = FacilityDetailPage(decodeURIComponent(detail[1]));
   else html = NotFoundPage();
+  closeMaps();
   app.innerHTML = html;
   const target = homeSection && document.getElementById(homeSection);
   if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
@@ -941,6 +1008,7 @@ function refreshSections(toTop = false) {
   const box = document.getElementById("sport-sections");
   const reading = [...box.querySelectorAll("section[id]")].find((el) => { const r = el.getBoundingClientRect(); return r.top <= 140 && r.bottom > 140; });
   const before = reading ? reading.getBoundingClientRect().top : null;
+  closeMaps();
   box.innerHTML = SportSections();
   const same = !toTop && reading && document.getElementById(reading.id);
   if (same) window.scrollBy(0, same.getBoundingClientRect().top - before);
@@ -955,6 +1023,14 @@ app.addEventListener("click", (e) => {
   if ((b = pick("data-sport"))) { currentSport = b.dataset.sport; dirQuery = ""; showAllPlay = showAllDir = false; return refreshSections(true); }
   if ((b = pick("data-access"))) { accessFilter = b.dataset.access; return refreshSections(); }
   if ((b = pick("data-day"))) { currentDay = b.dataset.day; showAllPlay = false; return refreshSections(); }
+  if ((b = pick("data-loctab"))) { locTab = b.dataset.loctab; return refreshSections(); }
+  if (pick("data-loc-clear")) { loc = null; zipQuery = ""; dirQuery = ""; showAllPlay = showAllDir = false; return refreshSections(); }
+  if ((b = pick("data-loc"))) {
+    const [type, ...rest] = b.dataset.loc.split(":"), value = rest.join(":");
+    loc = loc && loc.type === type && loc.value === value ? null : { type, value };
+    dirQuery = ""; showAllPlay = showAllDir = false;
+    return refreshSections();
+  }
   if (pick("data-near")) return locateMe();
   if (pick("data-more-play")) { showAllPlay = true; return refreshSections(); }
   if (pick("data-more-dir")) { showAllDir = true; document.getElementById("dir-list").innerHTML = DirectoryRows(); return; }
@@ -968,6 +1044,7 @@ app.addEventListener("click", (e) => {
   if ((b = pick("data-fsport")) || (b = pick("data-faccess"))) {
     if (b.dataset.fsport) facilitySport = b.dataset.fsport; else accessFilter = b.dataset.faccess;
     const y = window.scrollY;
+    closeMaps();
     app.innerHTML = FacilitiesPage();
     window.scrollTo(0, y);
     return observeReveals();
@@ -982,6 +1059,14 @@ app.addEventListener("click", (e) => {
 });
 
 app.addEventListener("input", (e) => {
+  if (e.target.id === "zip-search") {
+    zipQuery = e.target.value.replace(/\D/g, "").slice(0, 5);
+    if (e.target.value !== zipQuery) e.target.value = zipQuery;
+    const exact = zipQuery.length === 5 && locOptions("zip").some(([z]) => z === zipQuery);
+    if (exact) { loc = { type: "zip", value: zipQuery }; dirQuery = ""; showAllPlay = showAllDir = false; refreshSections(); const box = document.getElementById("zip-search"); if (box) { box.focus(); box.setSelectionRange(5, 5); } return; }
+    document.getElementById("zip-chips").innerHTML = `<button data-loc-clear aria-pressed="${!loc}" class="rounded-full px-4 py-2 ${LBL} text-xs transition-colors ${loc ? "bg-secondary text-foreground hover:bg-sand" : "bg-foreground text-background"}">Everywhere</button>` + ZipChips();
+    return;
+  }
   if (e.target.id !== "dir-search") return;
   dirQuery = e.target.value;
   document.getElementById("dir-list").innerHTML = DirectoryRows();
