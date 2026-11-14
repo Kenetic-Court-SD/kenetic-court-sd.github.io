@@ -328,11 +328,11 @@ function FilterBar() {
   return `
   <div id="filter-bar" class="sticky top-14 z-30 border-b border-border bg-background/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:px-6">
     <div class="mx-auto flex max-w-7xl flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex items-center gap-1 overflow-x-auto">
+      <div class="scroll-hint flex items-center gap-1 overflow-x-auto">
         <span class="mr-1 w-14 shrink-0 ${LBL} text-[10px] text-muted-foreground">Sport</span>
         ${SPORTS.map((s) => pill("data-sport", s.id, s.label, s.id === currentSport)).join("")}
       </div>
-      <div class="flex items-center gap-1 overflow-x-auto">
+      <div class="scroll-hint flex items-center gap-1 overflow-x-auto">
         <span class="mr-1 w-14 shrink-0 ${LBL} text-[10px] text-muted-foreground">Access</span>
         ${pill("data-access", "all", "All", accessFilter === "all")}${pill("data-access", "public", "Public", accessFilter === "public")}${pill("data-access", "private", "Private", accessFilter === "private")}
         ${loc ? `<button data-loc-clear aria-label="Clear location ${esc(locLabel())}" class="ml-2 flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 ${LBL} text-xs text-primary-foreground">${icon.mapPin("h-3.5 w-3.5")} ${esc(locLabel())} <span aria-hidden="true">✕</span></button>` : ""}
@@ -452,7 +452,7 @@ function OpenPlay(n) {
         </div>
         <p class="max-w-sm font-body text-base text-background/75">Pick a day to see every ${accessWord()}${sport.label.toLowerCase()} spot${whereWord()} with open play and the hours. Schedules change, so call ahead before a special trip.</p>
       </div>
-      <div class="mb-8 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Day of the week">
+      <div class="scroll-hint mb-8 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Day of the week">
         ${DAYS.map((d) => {
           const on = d === currentDay, count = all.filter((v) => v.playDays.includes(d)).length;
           return `<button data-day="${d}" role="tab" aria-selected="${on}" class="flex shrink-0 items-center gap-2 rounded-full py-2 pl-4 pr-2 ${LBL} text-xs transition-colors ${on ? "bg-primary text-primary-foreground" : "bg-background/10 text-background hover:bg-background/20"}">${d}${d === TODAY ? " · today" : ""}<span class="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] ${on ? "bg-foreground text-background" : "bg-background/15 text-background/80"}">${count}</span></button>`;

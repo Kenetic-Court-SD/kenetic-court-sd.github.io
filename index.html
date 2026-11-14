@@ -117,6 +117,13 @@
     .faq-item.open .faq-body { grid-template-rows: 1fr; }
     .faq-item.open .faq-chevron { transform: rotate(180deg); }
 
+    /* Rows of buttons that scroll sideways on small screens */
+    .overflow-x-auto { scrollbar-width: none; -ms-overflow-style: none; }
+    .overflow-x-auto::-webkit-scrollbar { display: none; }
+    @media (max-width: 1023px) {
+      .scroll-hint { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: 28px; }
+    }
+
     /* Keyboard focus ring */
     :focus-visible { outline: 3px solid hsl(var(--ocean)); outline-offset: 2px; }
     .on-dark :focus-visible { outline-color: hsl(var(--primary)); }

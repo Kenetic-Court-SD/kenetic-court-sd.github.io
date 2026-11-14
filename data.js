@@ -289,7 +289,7 @@ const VENUES = [
     website: CITY_PB_PDF, source: CITY_SRC,
   },
   {
-    sport: "pickleball", name: "Presidio Recreation Center", area: "Old Town", address: "2811 Jackson Dr, San Diego, CA 92110", phone: "(619) 692-4918",
+    sport: "pickleball", name: "Presidio Recreation Center", area: "Old Town", address: "2811 Jackson St, San Diego, CA 92110", phone: "(619) 692-4918",
     access: "public", wow: 2, courts: "2 courts", setting: "Indoor", cost: "Free",
     sessions: [S("Sat", "9:00 – 11:30 am", "Indoor")],
     website: CITY_PB_PDF, source: CITY_SRC,
@@ -474,7 +474,7 @@ const VENUES = [
   ...[
     ["Canyonside Community Park", "Rancho Peñasquitos", "12350 Black Mountain Rd, 92129", "(858) 538-8131", "12 courts", "Lit", "Every day 8 am – 9:45 pm", 3],
     ["Pacific Beach Tennis Club (Bob McEvoy Fields)", "Pacific Beach", "2639 Grand Ave, 92109", "(858) 273-9177", "7 courts", "Lit", "Every day 8 am – 10 pm (except City holidays)", 3],
-    ["Hourglass Park", "Mira Mesa", "14440 Black Mountain Rd, 92126", "(858) 538-8153", "8 courts", "Lit", "Every day 8 am – 10 pm", 3],
+    ["Hourglass Park", "Mira Mesa", "10440 Black Mountain Rd, 92126", "(858) 538-8153", "8 courts", "Lit", "Every day 8 am – 10 pm", 3],
     ["Martin Luther King Jr. Recreation Center", "Skyline", "6401 Skyline Dr, 92114", "(619) 527-3415", "7 courts", "Lit", "Mon–Fri 9 am – 7 pm · Sat 9 am – 3 pm", 2],
     ["Standley Park and Recreation Center", "University City", "3585 Governor Dr, 92122", "(858) 552-1652", "6 courts", "Lit", "Mon–Fri 8 am – 10 pm · Sat–Sun 8 am – dusk", 2],
     ["Colina del Sol Park", "Colina del Sol", "5319 Orange Ave, 92115", "(619) 235-1144", "6 courts", "Lit", "Mon–Thu dawn – 8 pm · Fri dawn – 6 pm · Sat–Sun dawn – 4 pm", 2],
@@ -600,6 +600,7 @@ const VENUES = [
 // Map coordinates [latitude, longitude] for each venue address, looked up with OpenStreetMap.
 // A venue appears on the map when its `address` is listed here.
 const GEO = {
+  "2811 Jackson St, San Diego, CA 92110": [32.75748, -117.19585],
   "11525 Sorrento Valley Rd, Suite A, San Diego, CA 92121": [32.9118, -117.23009],
   "1775 E Mission Bay Dr, San Diego, CA 92109": [32.77919, -117.2108],
   "704 Euclid Ave, San Diego, CA 92114": [32.71254, -117.08511],
@@ -621,7 +622,6 @@ const GEO = {
   "125 East Park Ave, San Diego, CA 92173": [32.55298, -117.04433],
   "12958 La Tortola, San Diego, CA 92129": [32.95454, -117.11597],
   "1405 Diamond St, San Diego, CA 92109": [32.80155, -117.24479],
-  "14440 Black Mountain Rd, San Diego, CA 92126": [32.97905, -117.13106],
   "1500 Washington Pl, San Diego, CA 92103": [32.74995, -117.17696],
   "18402 W Bernardo Dr, San Diego, CA 92127": [33.04313, -117.0762],
   "18448 W Bernardo Dr, San Diego, CA 92127": [33.04833, -117.07688],
@@ -633,7 +633,6 @@ const GEO = {
   "2639 Grand Ave, San Diego, CA 92109": [32.80174, -117.22218],
   "270 F St, Chula Vista, CA 91910": [32.6416, -117.0785],
   "2775 Mackenzie Creek Rd, Chula Vista, CA 91914": [32.6586, -116.9665],
-  "2811 Jackson Dr, San Diego, CA 92110": [32.81706, -117.05956],
   "3051 Cañon St, San Diego, CA 92106": [32.72172, -117.23242],
   "3170 Armstrong St, San Diego, CA 92111": [32.81314, -117.16375],
   "3508 Conrad Ave, San Diego, CA 92117": [32.83548, -117.21184],
