@@ -7,4 +7,4 @@ Static site, no build step: open `index.html` in a browser.
 - `app.js` — pages and interactions
 - `images/` — photos
 
-Live site: https://mjgibbs29-dot.github.io/kinetic-court-sd/
+Live site: https://kenetic-court-sd.github.io/
