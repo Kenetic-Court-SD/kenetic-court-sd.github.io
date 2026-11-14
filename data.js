@@ -4,6 +4,7 @@
 // - Public pickleball courts and open play hours: the City of San Diego's official
 //   "Pickleball Court Locations" PDF, marked "Updated 8.29.2026" (obvious am/pm typos fixed).
 // - Public tennis courts and hours: the City's "Tennis Courts" web page.
+// - Public courts in other cities (Carlsbad, Oceanside, Santee, ...): each city's own website.
 // - Clubs: each club's own website, read on DATA_CHECKED below.
 // - Venues with `verified: false` were carried over from version 1 and have NOT been
 //   confirmed yet. The site shows them with an "Unconfirmed" label.
@@ -308,10 +309,113 @@ const VENUES = [
   ].map(([name, area, address, phone, courts, openCourts]) => ({
     sport: "pickleball", name, area, address, phone, access: "public", wow: 2, courts, setting: "Outdoor", cost: "Free", openCourts, website: CITY_PB_PDF, source: CITY_SRC,
   })),
+  /* ===================== PICKLEBALL — public courts in other county cities ===================== */
+  // Each entry comes from that city's own website, read on DATA_CHECKED.
+  {
+    sport: "pickleball", name: "Poinsettia Community Park", area: "Carlsbad", address: "6600 Hidden Valley Rd, Carlsbad, CA 92011", phone: "(442) 339-2690",
+    access: "public", featured: true, wow: 4, courts: "6 dedicated courts", setting: "Outdoor", lights: "Lit until 10 pm", cost: "Free",
+    blurb: "Carlsbad's pickleball hub. Courts 1–4 are social courts with a two-game limit; courts 5 and 6 are challenge courts where winners stay on.",
+    sessions: [S(EVERY_DAY, "8:00 am – 10:00 pm", "Outdoor", "Drop-in, paddle line")],
+    website: "https://www.carlsbadca.gov/Home/Components/FacilityDirectory/FacilityDirectory/44/7417", source: { label: "City of Carlsbad facility directory", url: "https://www.carlsbadca.gov/Home/Components/FacilityDirectory/FacilityDirectory/44/7417" },
+  },
+  {
+    sport: "pickleball", name: "Melba Bishop Park", area: "Oceanside", address: "5306 N River Rd, Oceanside, CA", access: "public", featured: true, wow: 4,
+    courts: "11 courts", setting: "Outdoor", cost: "Free outdoors · indoor gym drop-in $3",
+    blurb: "Eleven outdoor courts. Courts 1–3 are always kept for open play, and the rest are first come, first served when no permitted group is using them.",
+    sessions: [S(EVERY_DAY, "6:00 am – 9:00 pm", "Outdoor", "Courts 1–3 always open play")],
+    openCourts: "Permitted groups use some courts on weekday mornings. The recreation center next door also runs indoor open gym pickleball ($3, free under 18 and over 65).",
+    website: "https://www.ci.oceanside.ca.us/Home/Components/FacilityDirectory/FacilityDirectory/92/710", source: { label: "City of Oceanside parks pages", url: "https://www.ci.oceanside.ca.us/government/parks-recreation/sports-field-rentals" },
+  },
+  {
+    sport: "pickleball", name: "Big Rock Park", area: "Santee", address: "8125 Arlette St, Santee, CA 92071", phone: "(619) 258-4100",
+    access: "public", featured: true, wow: 4, courts: "8 courts with permanent nets", setting: "Outdoor", cost: "Free",
+    blurb: "Eight fenced courts with permanent nets, and loaner paddles and balls for new players. Volunteers run free beginner clinics.",
+    sessions: [S(EVERY_DAY, "8:00 am – dusk", "Outdoor", "First come, first served"), S("Sun", "9:00 – 11:00 am", "Outdoor", "Free beginner clinic"), S("Wed", "1:00 – 3:00 pm", "Outdoor", "Free beginner clinic")],
+    website: "https://www.cityofsanteeca.gov/our-community/parks-recreation/pickleball", source: { label: "City of Santee pickleball page", url: "https://www.cityofsanteeca.gov/our-community/parks-recreation/pickleball" },
+  },
+  {
+    sport: "pickleball", name: "Mountain View Park", area: "Escondido", address: "Mountain View Park, Escondido, CA", access: "public", wow: 4,
+    courts: "8 dedicated courts (opened October 2026) + 12 shared courts", setting: "Outdoor", lights: "No lights", cost: "Free",
+    openCourts: "First come, first served during park hours, sunrise to sunset. Bring your own net for the shared courts.",
+    website: "https://escondido.gov/838/Raquet-Sports", source: { label: "City of Escondido racquet sports page", url: "https://escondido.gov/838/Raquet-Sports" },
+  },
+  {
+    sport: "pickleball", name: "Brengle Terrace Park", area: "Vista", address: "1200 Vale Terrace Dr, Vista, CA 92084", phone: "(760) 643-5272",
+    access: "public", wow: 3, courts: "4 courts", setting: "Outdoor", cost: "Free",
+    sessions: [S(EVERY_DAY, "7:00 am – 9:30 pm", "Outdoor", "Courts 1–3 social, court 4 challenge")],
+    website: "https://www.vista.gov/departments/recreation-comm-services/pickleball", source: { label: "City of Vista pickleball page", url: "https://www.vista.gov/departments/recreation-comm-services/pickleball" },
+  },
+  {
+    sport: "pickleball", name: "Wells Park", area: "El Cajon", address: "1153 E Madison Ave, El Cajon, CA 92021", access: "public", wow: 3,
+    courts: "5 courts and a pro shop (4 public)", setting: "Outdoor", cost: "Free",
+    sessions: [S(EVERY_DAY, "8:00 am – 9:00 pm", "Outdoor", "4 public courts")],
+    website: "https://www.elcajon.gov/your-government/departments/parks-recreation/recreation-centers/wells-center", source: { label: "City of El Cajon Wells Park page", url: "https://www.elcajon.gov/your-government/departments/parks-recreation/recreation-centers/wells-center" },
+  },
+  {
+    sport: "pickleball", name: "Innovation Park", area: "San Marcos", address: "1151 Armorlite Dr, San Marcos, CA 92069", phone: "(760) 744-9000 ext. 3500",
+    access: "public", wow: 3, courts: "Pickleball courts", setting: "Outdoor", cost: "Free",
+    sessions: [S(EVERY_DAY, "9:00 am – sunset", "Outdoor")],
+    website: "https://www.san-marcos.net/Home/Components/FacilityDirectory/FacilityDirectory/701/1078", source: { label: "City of San Marcos facility directory", url: "https://www.san-marcos.net/Home/Components/FacilityDirectory/FacilityDirectory/701/1078" },
+  },
+  {
+    sport: "pickleball", name: "Coronado Cays Park", area: "Coronado", address: "Coronado Cays Park, Coronado, CA 92118", phone: "(619) 522-2650",
+    access: "public", wow: 4, courts: "Dedicated pickleball courts", setting: "Outdoor", cost: "Free drop-in",
+    openCourts: "Free drop-in play when courts are available. Reserved and programmed play has priority; reservations go through the Coronado Tennis Center.",
+    website: "https://www.coronado.ca.us/Facilities/Facility/Details/Coronado-Cays-Park-12", source: { label: "City of Coronado facility page and fee schedule", url: "https://www.coronado.ca.us/Facilities/Facility/Details/Coronado-Cays-Park-12" },
+  },
+  {
+    sport: "pickleball", name: "Mackenzie Creek Park", area: "Chula Vista", address: "2775 Mackenzie Creek Rd, Chula Vista, CA 91914", access: "public", wow: 3,
+    courts: "Pickleball courts", setting: "Outdoor", cost: "Free",
+    openCourts: "Open during park hours, 7 am to 10 pm.",
+    website: "https://www.chulavistaca.gov/departments/public-works/parks/locations-features-amenities-photos/mackenzie-creek-park", source: { label: "City of Chula Vista park page", url: "https://www.chulavistaca.gov/departments/public-works/parks/locations-features-amenities-photos/mackenzie-creek-park" },
+  },
+  {
+    sport: "pickleball", name: "Highwood Park Courts", area: "La Mesa", address: "4200 Parks Ave, La Mesa, CA 91941", phone: "(619) 667-1300",
+    access: "public", wow: 3, courts: "Shared courts 2 and 3", setting: "Outdoor", cost: "Free",
+    sessions: [S("Mon Wed Fri Sun", "8:00 am – 12:00 pm", "Outdoor", "Pickleball block"), S("Tue Thu", "1:00 pm – dark", "Outdoor", "Pickleball block")],
+    openCourts: "These blocks come from a City rules sheet dated 2022. Confirm with the City before a special trip.",
+    website: "https://cityoflamesa.us/DocumentCenter/View/18291/Pickleball-Rules-102422", source: { label: "City of La Mesa pickleball rules sheet (2022)", url: "https://cityoflamesa.us/DocumentCenter/View/18291/Pickleball-Rules-102422" },
+    pdf: { label: "Pickleball rules & hours PDF", url: "https://cityoflamesa.us/DocumentCenter/View/18291/Pickleball-Rules-102422" },
+  },
+  {
+    sport: "pickleball", name: "La Mesita Park", area: "La Mesa", address: "La Mesita Park, La Mesa, CA", phone: "(619) 667-1300",
+    access: "public", wow: 2, courts: "Shared courts 3 and 4", setting: "Outdoor", cost: "Free",
+    sessions: [S("Mon Wed Sun", "6:00 am – 1:00 pm", "Outdoor", "Court 4 pickleball block"), S("Tue Wed Thu Fri", "4:00 – 8:00 pm", "Outdoor", "Court 4 pickleball block")],
+    openCourts: "All other times are first come, first served. These blocks come from a City rules sheet dated 2022, so confirm before a special trip.",
+    website: "https://cityoflamesa.us/DocumentCenter/View/18291/Pickleball-Rules-102422", source: { label: "City of La Mesa pickleball rules sheet (2022)", url: "https://cityoflamesa.us/DocumentCenter/View/18291/Pickleball-Rules-102422" },
+  },
+  {
+    sport: "pickleball", name: "Meadowbrook Gymnasium", area: "Poway", address: "12320 Meadowbrook Ln, Poway, CA 92064", phone: "(858) 668-4671",
+    access: "public", wow: 2, courts: "Indoor gym courts", setting: "Indoor", cost: "Free",
+    sessions: [S("Fri", "6:00 – 9:00 pm", "Indoor", "Open pickleball")],
+    website: "https://poway.org/368/Gymnasiums", source: { label: "City of Poway gymnasiums page and calendar", url: "https://poway.org/368/Gymnasiums" },
+  },
+  {
+    sport: "pickleball", name: "Washington Park", area: "Escondido", address: "Washington Park, Escondido, CA", access: "public", wow: 2,
+    courts: "4 courts", setting: "Outdoor", lights: "Lit", cost: "Free",
+    openCourts: "First come, first served. Bring your own net.",
+    website: "https://escondido.gov/838/Raquet-Sports", source: { label: "City of Escondido racquet sports page", url: "https://escondido.gov/838/Raquet-Sports" },
+  },
+  {
+    sport: "pickleball", name: "East Valley Community Center", area: "Escondido", address: "East Valley Community Center, Escondido, CA", access: "public", wow: 2,
+    courts: "Indoor gym courts", setting: "Indoor", cost: "See website",
+    openCourts: "Indoor drop-in pickleball on several mornings a week, 9 am to noon. The City's pages list different days, so check the open gym schedule.",
+    website: "https://escondido.gov/1170/Open-Gym", source: { label: "City of Escondido open gym page", url: "https://escondido.gov/1170/Open-Gym" },
+  },
+  {
+    sport: "pickleball", name: "Norman Park Senior Center", area: "Chula Vista", address: "270 F St, Chula Vista, CA 91910", access: "public", wow: 2,
+    courts: "2 courts", setting: "Outdoor", cost: "See website",
+    openCourts: "Some hours are for seniors only and others are all-ages open play. Call the center for the current schedule.",
+    website: "https://www.chulavistaca.gov/departments/parks-and-recreation/community-centers/norman-park-senior-center", source: { label: "City of Chula Vista senior center page", url: "https://www.chulavistaca.gov/departments/parks-and-recreation/community-centers/norman-park-senior-center" },
+  },
+  {
+    sport: "pickleball", name: "Olympus Park", area: "Encinitas", address: "701 Olympus St, Encinitas, CA 92024", access: "public", wow: 1,
+    courts: "1 shared basketball / pickleball court", setting: "Outdoor", cost: "Free",
+    openCourts: "Dawn to dusk. Not reservable.",
+    website: "https://www.encinitasca.gov/government/departments/parks-recreation-cultural-arts/parks-beaches-trails/parks", source: { label: "City of Encinitas parks page", url: "https://www.encinitasca.gov/government/departments/parks-recreation-cultural-arts/parks-beaches-trails/parks" },
+  },
   // Carried over from version 1 — not confirmed yet
   ...[
-    ["Coronado Cays Park", "Coronado", "public", "https://www.coronado.ca.us"],
-    ["Big Rock Park", "Santee", "public", "https://www.ci.santee.ca.us"],
     ["Encinitas Community Park", "Encinitas", "public", "https://www.encinitasca.gov"],
     ["San Diego Pickleball — Mission Bay Resort", "Mission Bay", "private", "https://www.sandiegopickleball.com"],
     ["Coronado Island Marriott", "Coronado", "private", "http://www.impactactivities.com/coronado"],
@@ -477,6 +581,96 @@ const VENUES = [
   { sport: "pingpong", name: "SoCal Table Tennis", area: "San Diego", access: "private", featured: true, wow: 3, image: "images/d1ac7835d.png", courts: "Table tennis club", setting: "Indoor", website: "https://www.socal-tabletennis.com", verified: false },
 ];
 
+// Map coordinates [latitude, longitude] for each venue address, looked up with OpenStreetMap.
+// A venue appears on the map when its `address` is listed here.
+const GEO = {
+  "10060 Avenida Magnifica, San Diego, CA 92131": [32.90825, -117.08352],
+  "1008 Santa Clara Pl, San Diego, CA 92109": [32.78307, -117.24992],
+  "10162 Rancho Carmel Dr, San Diego, CA 92128": [32.96625, -117.09013],
+  "10366 Rue Fontenay, San Diego, CA 92131": [32.90656, -117.07188],
+  "10440 Black Mountain Rd, San Diego, CA 92126": [32.90907, -117.12431],
+  "1049 Catalina Blvd, San Diego, CA 92107": [32.72393, -117.24504],
+  "11220 Clairemont Mesa Blvd, San Diego, CA 92124": [32.82802, -117.0838],
+  "11454 Blue Cypress Dr, San Diego, CA 92131": [32.92823, -117.07836],
+  "11464 Blue Cypress Dr, San Diego, CA 92131": [32.92816, -117.07838],
+  "11490 Cypress Canyon Rd, San Diego, CA 92131": [32.92822, -117.07682],
+  "1151 Armorlite Dr, San Marcos, CA 92069": [33.14575, -117.187],
+  "1153 E Madison Ave, El Cajon, CA 92021": [32.79816, -116.94298],
+  "1200 Vale Terrace Dr, Vista, CA 92084": [33.20902, -117.2252],
+  "12320 Meadowbrook Ln, Poway, CA 92064": [32.9634, -117.06338],
+  "12350 Black Mountain Rd, San Diego, CA 92129": [32.9423, -117.13062],
+  "125 East Park Ave, San Diego, CA 92173": [32.55298, -117.04433],
+  "12958 La Tortola, San Diego, CA 92129": [32.95454, -117.11597],
+  "1405 Diamond St, San Diego, CA 92109": [32.80155, -117.24479],
+  "14440 Black Mountain Rd, San Diego, CA 92126": [32.97905, -117.13106],
+  "1500 Washington Pl, San Diego, CA 92103": [32.74995, -117.17696],
+  "18402 W Bernardo Dr, San Diego, CA 92127": [33.04313, -117.0762],
+  "18448 W Bernardo Dr, San Diego, CA 92127": [33.04833, -117.07688],
+  "2111 Pan American Plaza, San Diego, CA 92101": [32.72692, -117.15302],
+  "2145 Park Blvd, San Diego, CA 92101": [32.72662, -117.1477],
+  "2221 Morley Field Dr, San Diego, CA 92104": [32.74062, -117.14236],
+  "2525 Bacon St, San Diego, CA 92107": [32.75334, -117.24521],
+  "2600 Golf Course Dr, San Diego, CA 92102": [32.73007, -117.13673],
+  "2639 Grand Ave, San Diego, CA 92109": [32.80174, -117.22218],
+  "270 F St, Chula Vista, CA 91910": [32.6416, -117.0785],
+  "2775 Mackenzie Creek Rd, Chula Vista, CA 91914": [32.6586, -116.9665],
+  "2811 Jackson Dr, San Diego, CA 92110": [32.81706, -117.05956],
+  "3051 Cañon St, San Diego, CA 92106": [32.72172, -117.23242],
+  "3170 Armstrong St, San Diego, CA 92111": [32.81314, -117.16375],
+  "3508 Conrad Ave, San Diego, CA 92117": [32.83548, -117.21184],
+  "3585 Governor Dr, San Diego, CA 92122": [32.85109, -117.21031],
+  "3605 Clairemont Dr, San Diego, CA 92117": [32.80932, -117.19534],
+  "3777 Townsgate Dr, San Diego, CA 92130": [32.94856, -117.23408],
+  "3911 Landis St, San Diego, CA 92105": [32.74588, -117.11072],
+  "4044 Idaho St, San Diego, CA 92104": [32.75132, -117.13423],
+  "4141 Ashford St, San Diego, CA 92111": [32.81743, -117.16145],
+  "4200 Parks Ave, La Mesa, CA 91941": [32.7554, -117.03038],
+  "4302 Landis St, San Diego, CA 92105": [32.74596, -117.10186],
+  "4380 Landis St, San Diego, CA 92105": [32.74594, -117.10009],
+  "4421 Bannock Ave, San Diego, CA 92117": [32.8324, -117.1974],
+  "4490 W Point Loma Blvd, San Diego, CA 92107": [32.75216, -117.23424],
+  "4680 Avati Dr, San Diego, CA 92117": [32.81752, -117.21557],
+  "4726 Santa Monica Ave, San Diego, CA 92107": [32.74496, -117.24556],
+  "4770 Fairport Way, San Diego, CA 92130": [32.92795, -117.21702],
+  "4810 Kane St, San Diego, CA 92110": [32.78566, -117.19447],
+  "4848 Tecolote Rd, San Diego, CA 92110": [32.77648, -117.19953],
+  "5155 Greenbrier Ave, San Diego, CA 92120": [32.79573, -117.07963],
+  "5156 Santo Rd, San Diego, CA 92124": [32.82545, -117.10815],
+  "5306 N River Rd, Oceanside, CA": [33.25606, -117.28972],
+  "5319 Orange Ave, San Diego, CA 92115": [32.75316, -117.07944],
+  "5977 Village Loop Rd, San Diego, CA 92130": [32.96002, -117.18683],
+  "6075 Printwood Way, San Diego, CA 92117": [32.82747, -117.17058],
+  "615 Prospect St, La Jolla, CA 92037": [32.84332, -117.27787],
+  "6401 Skyline Dr, San Diego, CA 92114": [32.70126, -117.06065],
+  "6508 Wunderlin Ave, San Diego, CA 92114": [32.71462, -117.05775],
+  "6600 Hidden Valley Rd, Carlsbad, CA 92011": [33.11505, -117.306],
+  "7003 Murray Park Dr, San Diego, CA 92119": [32.79274, -117.04584],
+  "701 Olympus St, Encinitas, CA 92024": [33.07366, -117.29147],
+  "7064 Levant St, San Diego, CA 92111": [32.79193, -117.16923],
+  "7632 Draper Ave, La Jolla, CA 92037": [32.84174, -117.27686],
+  "8021 Park Village Rd, San Diego, CA 92129": [32.93995, -117.14824],
+  "8125 Arlette St, Santee, CA 92071": [32.83125, -117.01949],
+  "8575 New Salem St, San Diego, CA 92126": [32.91515, -117.14033],
+  "8651 Celestine Ave, San Diego, CA 92123": [32.79068, -117.14544],
+  "875 Santa Fe Dr, Encinitas, CA 92024": [33.03599, -117.27339],
+  "8810 Judicial Dr, San Diego, CA 92122": [32.86764, -117.19764],
+  "9191 Gramercy Dr, San Diego, CA 92123": [32.80167, -117.1294],
+  "9353 Oviedo St, San Diego, CA 92129": [32.96927, -117.12651],
+  "9370 Waples St, Suite 101, San Diego, CA 92121": [32.9012, -117.18659],
+  "9545 Campo Road, Spring Valley, CA 91977": [32.74778, -116.99118],
+  "9860 Hopkins Dr, La Jolla, CA 92093": [32.88368, -117.23862],
+  "Bethune Ct and Kelton Rd, San Diego, CA 92114": [32.7214, -117.07382],
+  "Coronado Cays Park, Coronado, CA 92118": [32.62159, -117.1353],
+  "East Valley Community Center, Escondido, CA": [33.13848, -117.0461],
+  "La Mesita Park, La Mesa, CA": [32.79012, -117.00549],
+  "Mountain View Park, Escondido, CA": [33.1287, -117.03604],
+  "Washington Park, Escondido, CA": [33.13581, -117.06151],
+};
+
+// Where Contact form submissions are sent. Paste your Formspree form link here,
+// for example "https://formspree.io/f/abcdwxyz". While this is empty the form is switched off.
+const FORMSPREE_URL = "";
+
 // Official schedules and documents, shown in the "Schedules & PDFs" section.
 const DOCUMENTS = [
   { group: "City of San Diego — public courts", items: [
@@ -488,6 +682,16 @@ const DOCUMENTS = [
     { title: "Pacific Highlands Ranch — gym schedule", note: "Carmel Valley area.", kind: "PDF", url: "https://www.sandiego.gov/sites/default/files/phropenplay.pdf" },
     { title: "Mid-City Gymnasium — pickleball & badminton open play", note: "City Heights.", kind: "PDF", url: "https://www.sandiego.gov/sites/default/files/2024-11/midcitybadmintonpickleball.pdf" },
     { title: "Public tennis courts — locations & hours", note: "All 30 City tennis sites.", kind: "Web", url: CITY_TENNIS },
+  ] },
+  { group: "Other cities — public courts", items: [
+    { title: "Carlsbad — Poinsettia Community Park", note: "Six courts, open 8 am to 10 pm daily. Court rules and hours.", kind: "Web", url: "https://www.carlsbadca.gov/Home/Components/FacilityDirectory/FacilityDirectory/44/7417" },
+    { title: "Santee — pickleball at Big Rock Park", note: "Hours, rules and free beginner clinics.", kind: "Web", url: "https://www.cityofsanteeca.gov/our-community/parks-recreation/pickleball" },
+    { title: "Vista — pickleball at Brengle Terrace Park", note: "Social and challenge court rules, classes.", kind: "Web", url: "https://www.vista.gov/departments/recreation-comm-services/pickleball" },
+    { title: "Escondido — racquet sports", note: "Mountain View Park, Washington Park and indoor drop-in.", kind: "Web", url: "https://escondido.gov/838/Raquet-Sports" },
+    { title: "Oceanside — Melba Bishop Park", note: "Eleven outdoor courts and the recreation center gym.", kind: "Web", url: "https://www.ci.oceanside.ca.us/Home/Components/FacilityDirectory/FacilityDirectory/92/710" },
+    { title: "La Mesa — pickleball rules & hours", note: "Highwood and La Mesita park court blocks (2022 sheet).", kind: "PDF", url: "https://cityoflamesa.us/DocumentCenter/View/18291/Pickleball-Rules-102422" },
+    { title: "El Cajon — Wells Park pickleball", note: "Five courts and a pro shop.", kind: "Web", url: "https://www.elcajon.gov/your-government/departments/parks-recreation/recreation-centers/wells-center" },
+    { title: "Coronado — Cays Park", note: "Drop-in and reservation rules.", kind: "Web", url: "https://www.coronado.ca.us/Facilities/Facility/Details/Coronado-Cays-Park-12" },
   ] },
   { group: "Clubs & organizations — open play", items: [
     { title: "Barnes Tennis Center — pickleball open play", note: "Daily sessions, $7. Ladder play Tuesday and Thursday.", kind: "Web", url: "https://www.barnestenniscenter.com/pickleballopenplay" },

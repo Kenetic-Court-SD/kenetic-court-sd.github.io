@@ -12,6 +12,7 @@ const sportOf = (id) => SPORTS.find((s) => s.id === id) || { id, label: id, noun
 VENUES.forEach((v) => {
   v.id = `${v.sport}-${slug(v.name)}`;
   if (v.photo && PHOTOS[v.photo]) { v.photoInfo = PHOTOS[v.photo]; v.image = v.photoInfo.src; }
+  v.geo = (v.address && GEO[v.address]) || null;
   v.sessions = v.sessions || [];
   v.playDays = DAYS.filter((d) => v.sessions.some((s) => s.days.includes(d)));
   // "Coolest courts with the most open play first": looks count double, plus one point per open play day.
@@ -154,6 +155,7 @@ const dots = (extra = "opacity-60") => `<div class="mesh-overlay pointer-events-
 const NAV_LINKS = [
   { label: "Courts", to: "#/" },
   { label: "Open Play", to: "#/open-play" },
+  { label: "Map", to: "#/map" },
   { label: "Schedules", to: "#/schedules" },
   { label: "FAQ", to: "#/faq" },
   { label: "About", to: "#/about" },
@@ -168,8 +170,14 @@ function Nav() {
         ${logo("h-9 w-9")}
         <span class="font-display whitespace-nowrap text-lg leading-none sm:text-xl">Kinetic Court<span class="text-pop"> SD</span></span>
       </a>
-      <div class="flex items-center gap-0 overflow-x-auto sm:gap-1">
-        ${NAV_LINKS.map((l) => `<a href="${l.to}" class="shrink-0 whitespace-nowrap rounded-full px-2.5 py-2 ${LBL} text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-3">${l.label}</a>`).join("")}
+      <div class="hidden items-center gap-1 lg:flex">
+        ${NAV_LINKS.map((l) => `<a href="${l.to}" class="shrink-0 whitespace-nowrap rounded-full px-3 py-2 ${LBL} text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">${l.label}</a>`).join("")}
+      </div>
+      <button data-menu aria-expanded="false" aria-controls="phone-menu" class="flex items-center gap-2 rounded-full bg-foreground px-4 py-2 ${LBL} text-[11px] text-background lg:hidden">Menu ${svg(`<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>`, "h-4 w-4")}</button>
+    </div>
+    <div id="phone-menu" class="hidden border-t border-border bg-background px-4 pb-4 pt-2 lg:hidden">
+      <div class="mx-auto grid max-w-7xl grid-cols-2 gap-2">
+        ${NAV_LINKS.map((l) => `<a href="${l.to}" data-menu-link class="rounded-2xl bg-secondary px-4 py-3 font-display text-lg text-foreground">${l.label}</a>`).join("")}
       </div>
     </div>
   </nav>`;
@@ -217,7 +225,44 @@ const wave = (tone = "text-background") => `
   </svg>`;
 
 /* ---------- home ---------- */
-const TODAY = DAYS[(new Date().getDay() + 6) % 7];
+// "Now" in San Diego, whatever time zone the visitor is in.
+const sdNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+const TODAY = DAYS[(sdNow().getDay() + 6) % 7];
+const nowMinutes = () => { const d = sdNow(); return d.getHours() * 60 + d.getMinutes(); };
+
+// Turn "7:15 am – 12:00 pm" or "1:00 – 4:00 pm" into [start, end] minutes. Returns null when it can't.
+function parseRange(time) {
+  const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?\s*–\s*(?:(\d{1,2}):(\d{2})\s*(am|pm)|(dusk|dark|sunset))$/i.exec(time.trim());
+  if (!m) return null;
+  const mins = (h, mm, ap) => (Number(h) % 12 + (ap.toLowerCase() === "pm" ? 12 : 0)) * 60 + Number(mm);
+  if (m[7]) return m[3] ? [mins(m[1], m[2], m[3]), 16 * 60 + 45] : null; // "dusk": assume the earliest winter sunset
+  const end = mins(m[4], m[5], m[6]);
+  let start = mins(m[1], m[2], m[3] || m[6]);
+  if (start > end) start = mins(m[1], m[2], "am");
+  return start < end ? [start, end] : null;
+}
+const fmtTime = (min) => `${((Math.floor(min / 60) + 11) % 12) + 1}:${pad2(min % 60)} ${min >= 720 ? "pm" : "am"}`;
+// For a session today: "live", "soon" (starts within 90 minutes), "later", "done", or null if unknown.
+function sessionState(s) {
+  const r = parseRange(s.time); if (!r) return null;
+  const now = nowMinutes();
+  return now >= r[1] ? "done" : now >= r[0] ? "live" : r[0] - now <= 90 ? "soon" : "later";
+}
+const liveSessions = (v) => v.sessions.filter((s) => s.days.includes(TODAY) && sessionState(s) === "live");
+const liveNowCount = () => VENUES.filter((v) => v.sport === "pickleball" && liveSessions(v).length).length;
+
+// Distance between two [lat, lng] points, in miles.
+const milesBetween = (a, b) => {
+  const R = 3958.8, rad = (x) => x * Math.PI / 180, dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+let userLoc = null;      // the visitor's [lat, lng] once they press "Near me"
+let sortNear = false;    // list the directory nearest first
+let locMsg = "";         // message shown under the Near me button
+let mapObj = null;
+const distOf = (v) => (userLoc && v.geo ? milesBetween(userLoc, v.geo) : null);
+const distLabel = (v) => { const d = distOf(v); return d === null ? "" : `${d < 10 ? d.toFixed(1) : Math.round(d)} mi`; };
 let currentSport = "pickleball";
 let accessFilter = "all"; // all | public | private
 let currentDay = TODAY;
@@ -231,7 +276,7 @@ function Hero() {
     <img src="${HERO_IMAGE}" alt="Aerial view of empty San Diego pickleball courts at golden hour" class="absolute inset-0 h-full w-full object-cover" />
     <div class="absolute inset-0 bg-gradient-to-b from-foreground/45 via-foreground/20 to-foreground/75"></div>
     <div class="relative z-10 flex h-full flex-col items-center justify-center px-6 pb-10 text-center">
-      <p class="fade-up mb-5 flex items-center gap-2 rounded-full bg-background/15 px-4 py-2 ${LBL} text-xs text-background backdrop-blur">${ball("h-4 w-4")} San Diego's court atlas</p>
+      <p class="fade-up mb-5 flex items-center gap-2 rounded-full bg-background/15 px-4 py-2 ${LBL} text-xs text-background backdrop-blur">${ball("h-4 w-4")} ${liveNowCount() ? `${liveNowCount()} spots have open play right now` : "San Diego's court atlas"}</p>
       <h1 class="fade-in font-display leading-[0.92] text-background" style="font-size:clamp(3.4rem,12.5vw,10.5rem);font-weight:700;--d:.2s">
         San Diego
         <span class="block text-primary">In Play<span class="ball-bounce">${ball("ml-[0.05em] inline-block h-[0.22em] w-[0.22em]")}</span></span>
@@ -318,7 +363,17 @@ function Featured(n) {
 function OpenPlay(n) {
   if (!hasOpenPlay(currentSport)) return "";
   const all = sportVenues().filter((v) => v.sessions.length);
-  const today = all.filter((v) => v.playDays.includes(currentDay)).sort(byScore);
+  const isToday = currentDay === TODAY;
+  const rank = (v) => { const st = v.sessions.filter((s) => s.days.includes(currentDay)).map(sessionState); return st.includes("live") ? 0 : st.includes("soon") ? 1 : st.includes("later") || st.includes(null) ? 2 : 3; };
+  const today = all.filter((v) => v.playDays.includes(currentDay)).sort((a, b) => (isToday ? rank(a) - rank(b) : 0) || byScore(a, b));
+  const liveCount = isToday ? today.filter((v) => rank(v) === 0).length : 0;
+  const stateChip = (s) => {
+    if (!isToday) return "";
+    const st = sessionState(s), r = parseRange(s.time);
+    return st === "live" ? `<span class="${CHIP} bg-primary text-primary-foreground">● On now · until ${fmtTime(r[1])}</span>`
+      : st === "soon" ? `<span class="${CHIP} bg-background/20 text-background">Starts in ${r[0] - nowMinutes()} min</span>`
+      : st === "done" ? `<span class="${CHIP} bg-background/10 text-background/50">Ended</span>` : "";
+  };
   const sport = sportOf(currentSport);
   return `
   <section id="open-play" class="on-dark relative scroll-mt-28 overflow-hidden bg-foreground px-6 py-20 text-background sm:py-28">
@@ -337,7 +392,7 @@ function OpenPlay(n) {
           return `<button data-day="${d}" role="tab" aria-selected="${on}" class="flex shrink-0 items-center gap-2 rounded-full py-2 pl-4 pr-2 ${LBL} text-xs transition-colors ${on ? "bg-primary text-primary-foreground" : "bg-background/10 text-background hover:bg-background/20"}">${d}${d === TODAY ? " · today" : ""}<span class="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] ${on ? "bg-foreground text-background" : "bg-background/15 text-background/80"}">${count}</span></button>`;
         }).join("")}
       </div>
-      <p class="mb-5 ${LBL} text-[11px] text-background/60">${today.length} ${today.length === 1 ? "place" : "places"} with open play on ${DAY_NAMES[currentDay]}</p>
+      <p class="mb-5 flex flex-wrap items-center gap-3 ${LBL} text-[11px] text-background/60"><span>${today.length} ${today.length === 1 ? "place" : "places"} with open play on ${DAY_NAMES[currentDay]}</span>${liveCount ? `<span class="${CHIP} bg-primary text-primary-foreground">● ${liveCount} on right now</span>` : ""}</p>
       ${today.length ? `<ul class="space-y-2">
         ${today.map((v) => `
           <li>
@@ -350,9 +405,10 @@ function OpenPlay(n) {
               </div>
               <ul class="space-y-1 self-center">
                 ${v.sessions.filter((s) => s.days.includes(currentDay)).map((s) => `
-                  <li class="flex flex-wrap items-baseline gap-x-3">
+                  <li class="flex flex-wrap items-center gap-x-3 gap-y-1 ${isToday && sessionState(s) === "done" ? "opacity-50" : ""}">
                     <span class="font-mono text-base text-background">${esc(s.time)}</span>
                     <span class="font-body text-sm text-background/60">${esc([s.where, s.note].filter(Boolean).join(" · "))}</span>
+                    ${stateChip(s)}
                   </li>`).join("")}
               </ul>
             </a>
@@ -365,7 +421,9 @@ function OpenPlay(n) {
 
 function DirectoryRows() {
   const q = dirQuery.trim().toLowerCase();
-  const list = sportVenues().filter((v) => !q || `${v.name} ${v.area}`.toLowerCase().includes(q)).sort(byScore);
+  const near = sortNear && userLoc;
+  const list = sportVenues().filter((v) => !q || `${v.name} ${v.area}`.toLowerCase().includes(q))
+    .sort((a, b) => (near ? (distOf(a) ?? 9999) - (distOf(b) ?? 9999) : 0) || byScore(a, b));
   if (!list.length) return emptyState(q ? `Nothing matches “${esc(dirQuery)}”.` : `No ${accessWord()}${sportOf(currentSport).noun} listed yet. Try switching the Access filter.`);
   return `<ul class="divide-y divide-border border-y border-border">
     ${list.map((v) => `
@@ -374,7 +432,7 @@ function DirectoryRows() {
         <div class="min-w-0 flex-1">
           <h3 class="font-display text-xl leading-tight text-foreground sm:text-2xl"><a href="#/facility-details/${v.id}" class="transition-colors hover:text-pop">${esc(v.name)}</a></h3>
           <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-body text-sm text-muted-foreground">
-            ${accessChip(v)}${unconfirmedChip(v)}<span>${esc([v.area, v.courts, v.setting].filter(Boolean).join(" · "))}</span>
+            ${accessChip(v)}${unconfirmedChip(v)}${distLabel(v) ? `<span class="${CHIP} bg-primary text-primary-foreground">${distLabel(v)}</span>` : ""}<span>${esc([v.area, v.courts, v.setting].filter(Boolean).join(" · "))}</span>
           </p>
           ${playSummary(v) ? `<p class="mt-1.5 ${LBL} text-[11px] text-pop">${esc(playSummary(v))}</p>` : ""}
         </div>
@@ -389,13 +447,19 @@ function DirectoryRows() {
 function Directory(n) {
   const sport = sportOf(currentSport), count = sportVenues().length;
   return `
-  <section id="directory" class="relative bg-background px-6 py-20 sm:py-28">
+  <section id="directory" class="relative scroll-mt-28 bg-background px-6 py-20 sm:py-28">
     <div class="mx-auto max-w-7xl">
       <div class="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div class="max-w-2xl">
           ${eyebrow(`${pad2(n)} · The Full Directory`)}
           ${sectionTitle(`Every<br>court<span class="text-pop">.</span>`)}
-          <p class="mt-6 font-body text-base text-muted-foreground">${count ? `All ${count} ${accessWord()}${sport.noun} in the atlas, best first.` : ""} Open any one for its schedule, address, phone number and official links.</p>
+          <p class="mt-6 font-body text-base text-muted-foreground">${count ? `All ${count} ${accessWord()}${sport.noun} in the atlas, ${sortNear && userLoc ? "nearest first" : "best first"}.` : ""} Open any one for its schedule, address, phone number and official links.</p>
+          <div class="mt-5 flex flex-wrap items-center gap-2">
+            <span class="${LBL} text-[10px] text-muted-foreground">Sort</span>
+            <button data-sort="best" aria-pressed="${!(sortNear && userLoc)}" class="rounded-full px-3.5 py-2 ${LBL} text-[11px] transition-colors ${sortNear && userLoc ? "bg-secondary text-foreground" : "bg-foreground text-background"}">Best first</button>
+            <button data-near aria-pressed="${!!(sortNear && userLoc)}" class="flex items-center gap-1.5 rounded-full px-3.5 py-2 ${LBL} text-[11px] transition-colors ${sortNear && userLoc ? "bg-foreground text-background" : "bg-secondary text-foreground"}">${icon.mapPin("h-3.5 w-3.5")} Nearest to me</button>
+            ${locMsg ? `<span class="font-body text-sm text-muted-foreground">${esc(locMsg)}</span>` : ""}
+          </div>
         </div>
         <label class="block w-full sm:w-72">
           <span class="mb-2 block ${LBL} text-[10px] text-muted-foreground">Search by name or neighborhood</span>
@@ -405,6 +469,71 @@ function Directory(n) {
       <div id="dir-list">${DirectoryRows()}</div>
     </div>
   </section>`;
+}
+
+/* ---------- map ---------- */
+const PIN = (color) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40" width="30" height="40"><path d="M15 39C15 39 28 24.5 28 14.5A13 13 0 0 0 2 14.5C2 24.5 15 39 15 39Z" fill="${color}" stroke="#FFFAF0" stroke-width="2"/><circle cx="15" cy="14.5" r="6.2" fill="#F7C531"/><g fill="#C99A12"><circle cx="15" cy="14.5" r="1"/><circle cx="15" cy="11" r=".9"/><circle cx="15" cy="18" r=".9"/><circle cx="12" cy="12.8" r=".9"/><circle cx="18" cy="12.8" r=".9"/><circle cx="12" cy="16.2" r=".9"/><circle cx="18" cy="16.2" r=".9"/></g></svg>`;
+const PIN_COLOR = { public: "#117198", private: "#EE6A45" };
+
+function MapSection(n) {
+  const all = sportVenues(), onMap = all.filter((v) => v.geo).length;
+  return `
+  <section id="map" class="relative scroll-mt-28 bg-background px-6 pt-20 sm:pt-28">
+    <div class="mx-auto max-w-7xl">
+      <div class="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          ${eyebrow(`${pad2(n)} · The Map`)}
+          ${sectionTitle(`Find a court<br>near you<span class="text-pop">.</span>`)}
+        </div>
+        <div class="max-w-sm">
+          <button data-near class="${BTN_SUN}">${icon.mapPin("h-4 w-4")} ${userLoc ? "Update my location" : "Use my location"}</button>
+          <p class="mt-3 font-body text-sm text-muted-foreground">${esc(locMsg || "Shows the closest courts first. Your location stays on your device.")}</p>
+        </div>
+      </div>
+      <div id="court-map" class="relative z-0 h-[420px] overflow-hidden rounded-3xl border-2 border-border bg-secondary sm:h-[560px]" role="application" aria-label="Map of ${esc(sportOf(currentSport).label)} courts"></div>
+      <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-body text-sm text-muted-foreground">
+        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" style="background:${PIN_COLOR.public}"></span> Public</span>
+        <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" style="background:${PIN_COLOR.private}"></span> Private club</span>
+        <span>${onMap} of ${all.length} ${accessWord()}${sportOf(currentSport).noun} are on the map${onMap < all.length ? "; the rest don't have a confirmed address yet" : ""}.</span>
+      </div>
+    </div>
+  </section>`;
+}
+
+function initMap() {
+  const el = document.getElementById("court-map");
+  if (mapObj) { mapObj.remove(); mapObj = null; }
+  if (!el) return;
+  if (!window.L) { el.innerHTML = `<p class="flex h-full items-center justify-center px-6 text-center font-body text-base text-muted-foreground">The map couldn't load. Check your connection and refresh.</p>`; return; }
+  const list = sportVenues().filter((v) => v.geo);
+  mapObj = L.map(el, { scrollWheelZoom: false }).setView([32.85, -117.12], 10);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(mapObj);
+  list.forEach((v) => {
+    const icon = L.divIcon({ className: "court-pin", html: PIN(PIN_COLOR[v.access] || PIN_COLOR.public), iconSize: [30, 40], iconAnchor: [15, 39], popupAnchor: [0, -36] });
+    L.marker(v.geo, { icon, title: v.name, alt: v.name }).addTo(mapObj).bindPopup(`
+      <div class="map-pop">
+        <p class="map-pop-area">${esc(v.area)} · ${v.access === "public" ? "Public" : "Private club"}${distLabel(v) ? ` · ${distLabel(v)}` : ""}</p>
+        <p class="map-pop-name">${esc(v.name)}</p>
+        ${playSummary(v) ? `<p class="map-pop-line">${esc(playSummary(v))}</p>` : ""}
+        <a class="map-pop-link" href="#/facility-details/${v.id}">Schedule &amp; details →</a>
+      </div>`);
+  });
+  if (userLoc) L.circleMarker(userLoc, { radius: 9, color: "#FFFAF0", weight: 3, fillColor: "#102F46", fillOpacity: 1 }).addTo(mapObj).bindPopup("You are here");
+  const pts = list.map((v) => v.geo);
+  if (userLoc && pts.length) {
+    const nearest = [...list].sort((a, b) => distOf(a) - distOf(b)).slice(0, 5).map((v) => v.geo);
+    mapObj.fitBounds([userLoc, ...nearest], { padding: [50, 50], maxZoom: 14 });
+  } else if (pts.length) mapObj.fitBounds(pts, { padding: [40, 40], maxZoom: 13 });
+}
+
+function locateMe() {
+  if (!navigator.geolocation) { locMsg = "This browser can't share a location."; return refreshSections(); }
+  locMsg = "Finding you…"; refreshSections();
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { userLoc = [pos.coords.latitude, pos.coords.longitude]; sortNear = true; locMsg = "Showing the courts closest to you."; refreshSections(); },
+    () => { locMsg = "We couldn't get your location. Check that location access is allowed for this site."; refreshSections(); },
+    { timeout: 10000, maximumAge: 300000 }
+  );
 }
 
 function Schedules(n) {
@@ -444,7 +573,7 @@ function SportSections() {
   let n = 2;
   const featured = Featured(n++), open = OpenPlay(n);
   if (open) n++;
-  return FilterBar() + featured + open + Directory(n++) + Schedules(n);
+  return FilterBar() + featured + open + MapSection(n++) + Directory(n++) + Schedules(n);
 }
 
 function HomePage() {
@@ -642,14 +771,11 @@ function FaqPage() {
 }
 
 /* ---------- contact ---------- */
-// This site has no backend, so submissions are kept in this browser's localStorage.
-// Replace saveSuggestion() with a real endpoint (Formspree, Supabase, your own API…) to collect them.
+// Submissions go to Formspree (set FORMSPREE_URL in data.js). Without it the form is switched off.
+const formReady = () => typeof FORMSPREE_URL === "string" && FORMSPREE_URL.startsWith("https://");
 async function saveSuggestion(data) {
-  const key = "kinetic-court-suggestions";
-  let all = [];
-  try { all = JSON.parse(localStorage.getItem(key) || "[]"); } catch {}
-  all.push({ ...data, created_at: new Date().toISOString() });
-  try { localStorage.setItem(key, JSON.stringify(all)); } catch {}
+  const res = await fetch(FORMSPREE_URL, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(data) });
+  if (!res.ok) throw new Error("Form service refused the submission");
 }
 
 const fieldLabel = (id, text) => `<label for="${id}" class="block ${LBL} text-[11px] text-foreground">${text}</label>`;
@@ -679,9 +805,9 @@ function ContactForm() {
     </div>
     <div class="space-y-2">${fieldLabel("message", "Message")}<textarea id="message" name="message" rows="5" placeholder="Tell us about the court or what needs updating…" class="${inputCls}"></textarea></div>
     <p id="form-error" class="hidden font-body text-sm text-destructive"></p>
-    <button type="submit" class="${BTN_SUN} w-full disabled:opacity-50">
+    ${formReady() ? `<button type="submit" class="${BTN_SUN} w-full disabled:opacity-50">
       <span>Send submission</span>${icon.send("h-4 w-4")}
-    </button>
+    </button>` : `<p class="rounded-2xl bg-secondary p-4 text-center font-body text-base text-foreground">This form opens soon. We're still connecting it, so nothing can be sent yet.</p>`}
   </form>`;
 }
 
@@ -726,7 +852,7 @@ function observeReveals() {
 function render() {
   const path = (location.hash.replace(/^#/, "") || "/").replace(/\/+$/, "") || "/";
   const detail = path.match(/^\/facility-details\/([^/]+)$/);
-  const homeSection = { "/open-play": "open-play", "/schedules": "schedules" }[path];
+  const homeSection = { "/open-play": "open-play", "/schedules": "schedules", "/map": "map" }[path];
   let html;
   if (path === "/" || homeSection) {
     // The Open Play section only exists for sports that have open play sessions.
@@ -743,6 +869,7 @@ function render() {
   const target = homeSection && document.getElementById(homeSection);
   if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
   observeReveals();
+  initMap();
 }
 
 // Re-draw the sport sections in place. Keeps the section being read where it is;
@@ -756,6 +883,7 @@ function refreshSections(toTop = false) {
   if (same) window.scrollBy(0, same.getBoundingClientRect().top - before);
   else if (box.getBoundingClientRect().top < 56) window.scrollBy(0, box.getBoundingClientRect().top - 56);
   observeReveals();
+  initMap();
 }
 
 app.addEventListener("click", (e) => {
@@ -764,6 +892,13 @@ app.addEventListener("click", (e) => {
   if ((b = pick("data-sport"))) { currentSport = b.dataset.sport; dirQuery = ""; return refreshSections(true); }
   if ((b = pick("data-access"))) { accessFilter = b.dataset.access; return refreshSections(); }
   if ((b = pick("data-day"))) { currentDay = b.dataset.day; return refreshSections(); }
+  if (pick("data-near")) return locateMe();
+  if (pick("data-sort")) { sortNear = false; locMsg = ""; return refreshSections(); }
+  if ((b = pick("data-menu")) || pick("data-menu-link")) {
+    const menu = document.getElementById("phone-menu"), open = b ? menu.classList.toggle("hidden") === false : (menu.classList.add("hidden"), false);
+    document.querySelector("[data-menu]").setAttribute("aria-expanded", String(open));
+    if (b) return;
+  }
   if ((b = pick("data-fsport")) || (b = pick("data-faccess"))) {
     if (b.dataset.fsport) facilitySport = b.dataset.fsport; else accessFilter = b.dataset.faccess;
     const y = window.scrollY;
@@ -789,6 +924,7 @@ app.addEventListener("input", (e) => {
 app.addEventListener("submit", async (e) => {
   if (e.target.id !== "contact-form") return;
   e.preventDefault();
+  if (!formReady()) return;
   const form = e.target;
   const data = Object.fromEntries(new FormData(form));
   const err = form.querySelector("#form-error");
