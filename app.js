@@ -974,6 +974,19 @@ function observeReveals() {
   els.forEach((el) => observer.observe(el));
 }
 
+// Jump to a section of the home page. On a fresh load the page keeps changing height for a
+// moment (styles, fonts and pictures arrive), so repeat the jump until it settles, unless
+// the visitor starts scrolling themselves.
+let jumpToken = 0;
+function jumpToSection(id) {
+  const token = ++jumpToken;
+  const jump = () => { const el = document.getElementById(id); if (el && token === jumpToken) el.scrollIntoView(); };
+  const stop = () => { if (token === jumpToken) jumpToken++; };
+  ["wheel", "touchstart", "keydown", "mousedown"].forEach((ev) => window.addEventListener(ev, stop, { once: true, passive: true }));
+  jump();
+  [100, 300, 700, 1200, 2000].forEach((ms) => setTimeout(jump, ms));
+}
+
 function render() {
   const path = (location.hash.replace(/^#/, "") || "/").replace(/\/+$/, "") || "/";
   const detail = path.match(/^\/facility-details\/([^/]+)$/);
@@ -992,8 +1005,7 @@ function render() {
   else html = NotFoundPage();
   closeMaps();
   app.innerHTML = html;
-  const target = homeSection && document.getElementById(homeSection);
-  if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
+  if (homeSection) jumpToSection(homeSection); else window.scrollTo(0, 0);
   observeReveals();
   initMap();
   initVenueMap();
