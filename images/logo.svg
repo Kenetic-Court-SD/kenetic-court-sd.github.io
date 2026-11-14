@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kinetic Court SD logo: a palm tree with a pickleball as the sun">
+  <!-- pickleball sun -->
+  <circle cx="40" cy="24" r="17" fill="#EFC14A"/>
+  <g fill="#D9A02B">
+    <circle cx="40" cy="24" r="2"/>
+    <circle cx="40" cy="14" r="1.8"/><circle cx="40" cy="34" r="1.8"/>
+    <circle cx="30" cy="24" r="1.8"/><circle cx="50" cy="24" r="1.8"/>
+    <circle cx="33" cy="17" r="1.8"/><circle cx="47" cy="17" r="1.8"/>
+    <circle cx="33" cy="31" r="1.8"/><circle cx="47" cy="31" r="1.8"/>
+  </g>
+  <!-- palm tree -->
+  <g fill="#1A2933">
+    <path d="M24.5 60 C25.5 48 26 38 29.5 27 L33 28 C30.5 39 30.5 49 30.5 60 Z"/>
+    <path d="M31 27 C24 17 14 15 6 21 C15 19 23 22 31 27 Z"/>
+    <path d="M31 27 C27 15 19 8 9 8 C18 11 25 18 31 27 Z"/>
+    <path d="M31 27 C31 15 35 7 43 3 C38 10 35 18 31 27 Z"/>
+    <path d="M31 27 C38 17 48 14 57 18 C47 18 39 21 31 27 Z"/>
+    <path d="M31 27 C41 23 51 27 56 36 C49 29 40 27 31 27 Z"/>
+    <path d="M31 27 C22 26 14 31 11 40 C17 33 24 29 31 27 Z"/>
+  </g>
+  <!-- ground -->
+  <path d="M12 60 H52" stroke="#1A2933" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
