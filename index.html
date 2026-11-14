@@ -32,6 +32,7 @@
             muted: { DEFAULT: c("muted"), foreground: c("muted-foreground") },
             ocean: c("ocean"),
             coral: c("coral"),
+            open: c("open"),
             sand: c("sand"),
             pop: c("pop"),
             destructive: c("destructive"),
@@ -64,6 +65,7 @@
       --ocean: 197 80% 33%;               /* ocean blue */
       --coral: 12 82% 62%;                /* sunset coral */
       --sand: 40 62% 85%;                 /* beach sand */
+      --open: 0 78% 46%;                  /* red: "open now" */
       --destructive: 4 75% 46%;
       --border: 40 48% 84%;
       --input: 40 40% 78%;
@@ -140,6 +142,7 @@
     .map-pop-area { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: hsl(var(--ocean)); }
     .map-pop-name { font-family: "Fredoka", sans-serif; font-weight: 600; font-size: 19px; line-height: 1.15; color: hsl(var(--foreground)); margin-top: 4px !important; }
     .map-pop-line { font-size: 13px; color: hsl(var(--muted-foreground)); margin-top: 4px !important; }
+    .map-pop-open { color: hsl(var(--open)) !important; font-weight: 700; }
     .map-pop-link { display: inline-block; margin-top: 10px; padding: 7px 14px; border-radius: 999px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)) !important; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -152,7 +155,7 @@
   <div id="app"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <!-- Change the number after ?v= whenever data.js or app.js changes, so browsers load the new files right away. -->
-  <script src="data.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="data.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

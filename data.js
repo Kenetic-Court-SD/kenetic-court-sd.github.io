@@ -297,7 +297,8 @@ const VENUES = [
   {
     sport: "pickleball", name: "Taft Middle School Joint Use", area: "Serra Mesa", address: "9191 Gramercy Dr, San Diego, CA 92123", phone: "(858) 573-1408",
     access: "public", wow: 1, courts: "2 courts", setting: "Outdoor", cost: "Free",
-    openCourts: "School days: 7:00 – 8:30 am and 4:30 pm to dusk. Weekends: 6:30 am to dusk. School breaks and holidays: 7:30 am to dusk.",
+    hours: "Mon–Fri 7 am – 8:30 am and 4:30 pm – dusk · Sat–Sun 6:30 am – dusk",
+    openCourts: "Those are the school-day hours. On school breaks and holidays the courts are open 7:30 am to dusk every day.",
     website: CITY_PB_PDF, source: CITY_SRC,
   },
   {

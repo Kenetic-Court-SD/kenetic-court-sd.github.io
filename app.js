@@ -153,6 +153,14 @@ function accessChip(v, onImage = false) {
   const tone = pub ? (onImage ? "bg-background text-foreground" : "bg-secondary text-foreground ring-1 ring-inset ring-ocean/25") : "bg-coral text-foreground";
   return `<span class="${CHIP} ${tone}">${pub ? "Public" : "Private club"}</span>`;
 }
+// "Open now" in red; closed in quiet gray. Nothing when we have no times for the venue.
+function openChip(v, onImage = false) {
+  const st = openStatus(v);
+  if (!st) return "";
+  return st.open ? `<span class="${CHIP} bg-open text-white">● ${st.label}</span>`
+    : `<span class="${CHIP} ${onImage ? "bg-foreground/60 text-background/85" : "bg-sand/60 text-muted-foreground"}">${st.label}</span>`;
+}
+const distChip = (v) => (distLabel(v) ? `<span class="${CHIP} bg-primary text-primary-foreground">${distLabel(v)}</span>` : "");
 const unconfirmedChip = (v, onImage = false) => v.verified === false
   ? `<span class="${CHIP} border border-dashed ${onImage ? "border-background/80 text-background" : "border-muted-foreground text-muted-foreground"}">Unconfirmed</span>` : "";
 const playSummary = (v) => v.closed ? v.closed
@@ -236,22 +244,86 @@ const wave = (tone = "text-background") => `
   </svg>`;
 
 /* ---------- home ---------- */
-// "Now" in San Diego, whatever time zone the visitor is in.
-const sdNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+// "Now" in San Diego, whatever time zone the visitor is in. (window.__now is only set by tests.)
+const sdNow = () => (window.__now ? new Date(window.__now) : new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" })));
 const TODAY = DAYS[(sdNow().getDay() + 6) % 7];
 const nowMinutes = () => { const d = sdNow(); return d.getHours() * 60 + d.getMinutes(); };
 
-// Turn "7:15 am – 12:00 pm" or "1:00 – 4:00 pm" into [start, end] minutes. Returns null when it can't.
+// Today's sunrise and sunset in San Diego, in minutes after midnight. Used for "dawn" and "dusk".
+function sunToday() {
+  const d = sdNow(), n = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  const lat = 32.72, lngHour = -117.16 / 15, rad = Math.PI / 180;
+  const utcHour = (rising) => {
+    const t = n + ((rising ? 6 : 18) - lngHour) / 24, M = 0.9856 * t - 3.289;
+    const L = (M + 1.916 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 282.634 + 360) % 360;
+    let RA = (Math.atan(0.91764 * Math.tan(L * rad)) / rad + 360) % 360;
+    RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+    const sinDec = 0.39782 * Math.sin(L * rad), cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833 * rad) - sinDec * Math.sin(lat * rad)) / (cosDec * Math.cos(lat * rad));
+    const H = (rising ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15;
+    return (((H + RA - 0.06571 * t - 6.622 - lngHour) % 24) + 24) % 24;
+  };
+  // Hours between San Diego time and UTC right now (-8 in winter, -7 in summer).
+  const offset = window.__now ? -8 : Math.round((d - new Date(new Date().toLocaleString("en-US", { timeZone: "UTC" }))) / 3600000);
+  const local = (h) => Math.round(((((h + offset) % 24) + 24) % 24) * 60);
+  return { rise: local(utcHour(true)), set: local(utcHour(false)) };
+}
+const SUN = sunToday();
+const WORD_TIMES = { dawn: SUN.rise, sunrise: SUN.rise, dusk: SUN.set, dark: SUN.set, sunset: SUN.set, "after school": 15 * 60 + 30 };
+const ENDS_AT_DUSK = /dusk|dark|sunset/i;
+
+// Turn "7:15 am – 12:00 pm", "1:00 – 4:00 pm", "8 am – dusk" or "dawn to dusk" into
+// [start, end] minutes after midnight. Returns null when it can't.
 function parseRange(time) {
-  const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?\s*–\s*(?:(\d{1,2}):(\d{2})\s*(am|pm)|(dusk|dark|sunset))$/i.exec(time.trim());
+  const m = /^(.+?)\s*(?:–|\bto\b)\s*(.+)$/i.exec(time.trim());
   if (!m) return null;
-  const mins = (h, mm, ap) => (Number(h) % 12 + (ap.toLowerCase() === "pm" ? 12 : 0)) * 60 + Number(mm);
-  if (m[7]) return m[3] ? [mins(m[1], m[2], m[3]), 16 * 60 + 45] : null; // "dusk": assume the earliest winter sunset
-  const end = mins(m[4], m[5], m[6]);
-  let start = mins(m[1], m[2], m[3] || m[6]);
-  if (start > end) start = mins(m[1], m[2], "am");
+  const word = (x) => WORD_TIMES[x.trim().toLowerCase()];
+  const clock = (x) => /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i.exec(x.trim());
+  const mins = (c, ap) => ((Number(c[1]) % 12) + (ap === "pm" ? 12 : 0)) * 60 + Number(c[2] || 0);
+  const sc = clock(m[1]), ec = clock(m[2]);
+  const end = word(m[2]) !== undefined ? word(m[2]) : ec && ec[3] ? mins(ec, ec[3].toLowerCase()) : null;
+  if (end === null) return null;
+  let start;
+  if (word(m[1]) !== undefined) start = word(m[1]);
+  else if (sc) { start = mins(sc, (sc[3] || (ec && ec[3]) || "am").toLowerCase()); if (start >= end) start = mins(sc, "am"); }
+  else return null;
   return start < end ? [start, end] : null;
 }
+
+// "Mon–Fri 8 am – 8 pm · Sat–Sun 8 am – 6 pm" -> a list of [day, start, end, endsAtDusk]
+const daysFor = (spec) => {
+  if (spec === "Every day") return DAYS;
+  if (spec === "Weekdays") return DAYS.slice(0, 5);
+  const [a, b] = spec.split("–"), from = DAYS.indexOf(a), to = b ? DAYS.indexOf(b) : from;
+  return from < 0 || to < 0 ? [] : DAYS.slice(from, to + 1);
+};
+function hoursWindows(text) {
+  const out = [];
+  text.replace(/\(.*?\)/g, "").split("·").forEach((seg) => {
+    const m = /^\s*(Every day|Weekdays|[A-Z][a-z]{2}(?:–[A-Z][a-z]{2})?),?\s+(.+?)\s*$/.exec(seg);
+    if (!m) return;
+    m[2].split(/\s+and\s+/).forEach((span) => {
+      const r = parseRange(span);
+      if (r) daysFor(m[1]).forEach((d) => out.push([d, r[0], r[1], ENDS_AT_DUSK.test(span)]));
+    });
+  });
+  return out;
+}
+// Find daily times inside a sentence such as "First come, first served · 7:30 am to dusk".
+function openCourtsWindows(text) {
+  const m = /(\d{1,2}(?::\d{2})?\s*(?:am|pm)|dawn|sunrise)\s*(?:to|–)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)|dusk|sunset|dark)/i.exec(text);
+  const r = m && parseRange(`${m[1]} – ${m[2]}`);
+  return r ? DAYS.map((d) => [d, r[0], r[1], ENDS_AT_DUSK.test(m[2])]) : [];
+}
+// Every venue gets its open windows: [day, start, end, endsAtDusk, "play" | "hours"].
+// "play" comes from open play sessions; "hours" from court hours or always-open courts.
+VENUES.forEach((v) => {
+  v.windows = [];
+  v.sessions.forEach((x) => { const r = parseRange(x.time); if (r) x.days.forEach((d) => v.windows.push([d, r[0], r[1], ENDS_AT_DUSK.test(x.time), "play"])); });
+  const general = v.hours ? hoursWindows(v.hours) : v.openCourts ? openCourtsWindows(v.openCourts) : [];
+  general.forEach((w) => v.windows.push([...w, "hours"]));
+  v.hasHours = general.length > 0;
+});
 const fmtTime = (min) => `${((Math.floor(min / 60) + 11) % 12) + 1}:${pad2(min % 60)} ${min >= 720 ? "pm" : "am"}`;
 // For a session today: "live", "soon" (starts within 90 minutes), "later", "done", or null if unknown.
 function sessionState(s) {
@@ -259,6 +331,26 @@ function sessionState(s) {
   const now = nowMinutes();
   return now >= r[1] ? "done" : now >= r[0] ? "live" : r[0] - now <= 90 ? "soon" : "later";
 }
+// Is a venue open right now? Returns null when we have no times for it.
+//   { open: true,  label: "Open play now" | "Open now", detail: "until 9:00 pm" }
+//   { open: false, label: "Closed now" | "No open play now", detail: "opens 8:00 am" }
+function openStatus(v, at = sdNow()) {
+  if (v.closed) return { open: false, label: "Closed", detail: "under construction" };
+  if (!v.windows.length) return null;
+  const day = DAYS[(at.getDay() + 6) % 7], now = at.getHours() * 60 + at.getMinutes();
+  const today = v.windows.filter((w) => w[0] === day);
+  const live = today.filter((w) => now >= w[1] && now < w[2]);
+  if (live.length) {
+    const last = live.reduce((a, b) => (b[2] > a[2] ? b : a));
+    return { open: true, label: live.some((w) => w[4] === "play") ? "Open play now" : "Open now", detail: `until ${last[3] ? "dusk" : fmtTime(last[2])}` };
+  }
+  const first = (list) => [...list].sort((a, b) => a[1] - b[1])[0];
+  const next = first(today.filter((w) => w[1] > now)), tomorrow = first(v.windows.filter((w) => w[0] === DAYS[(DAYS.indexOf(day) + 1) % 7]));
+  const word = v.hasHours ? "opens" : "next at";
+  return { open: false, label: v.hasHours ? "Closed now" : "No open play now", detail: next ? `${word} ${fmtTime(next[1])}` : tomorrow ? `${word} ${fmtTime(tomorrow[1])} tomorrow` : "" };
+}
+const isOpenNow = (v) => { const st = openStatus(v); return !!(st && st.open); };
+const statusLine = (v) => { const st = openStatus(v); return st ? `${st.label}${st.detail ? ` · ${st.detail}` : ""}` : ""; };
 const liveSessions = (v) => v.sessions.filter((s) => s.days.includes(TODAY) && sessionState(s) === "live");
 const liveNowCount = () => VENUES.filter((v) => v.sport === "pickleball" && liveSessions(v).length).length;
 
@@ -269,7 +361,8 @@ const milesBetween = (a, b) => {
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 let userLoc = null;      // the visitor's [lat, lng] once they press "Near me"
-let sortNear = false;    // list the directory nearest first
+let sortNear = true;     // put the closest courts first whenever we know where the visitor is
+let onlyOpen = false;    // show only courts that are open right now
 let locMsg = "";         // message shown under the Near me button
 let mapObj = null;
 let venueMapObj = null;
@@ -278,6 +371,11 @@ let showAllDir = false;  // directory: first 20, or everything
 const moreButton = (attr, n, what) => `<div class="mt-6 text-center"><button ${attr} class="${BTN} border-2 border-current">Show all ${n} ${what} ${icon.chevronDown("h-4 w-4")}</button></div>`;
 const distOf = (v) => (userLoc && v.geo ? milesBetween(userLoc, v.geo) : null);
 const distLabel = (v) => { const d = distOf(v); return d === null ? "" : `${d < 10 ? d.toFixed(1) : Math.round(d)} mi`; };
+const nearOn = () => !!(sortNear && userLoc);
+// Closest first when we know the visitor's location, otherwise best first.
+const order = (list) => [...list].sort((a, b) => (nearOn() ? (distOf(a) ?? 9999) - (distOf(b) ?? 9999) : 0) || byScore(a, b));
+// Remember whether the visitor allowed location, so we don't ask again after a "no".
+const rememberLocation = (answer) => { try { localStorage.setItem("kc-location", answer); } catch {} };
 let currentSport = "pickleball";
 let accessFilter = "all"; // all | public | private
 let currentDay = TODAY;
@@ -290,7 +388,7 @@ const locMatch = (v) => !loc || v[loc.type] === loc.value;
 const locLabel = () => !loc ? "" : loc.type === "state" ? (STATE_NAMES[loc.value] || loc.value) : loc.type === "zip" ? `ZIP ${loc.value}` : loc.value;
 const whereWord = () => (loc ? ` in ${locLabel()}` : "");
 // Venues for the chosen sport and access, before and after the location filter.
-const baseVenues = () => VENUES.filter((v) => v.sport === currentSport && (accessFilter === "all" || v.access === accessFilter));
+const baseVenues = () => VENUES.filter((v) => v.sport === currentSport && (accessFilter === "all" || v.access === accessFilter) && (!onlyOpen || isOpenNow(v)));
 const sportVenues = () => baseVenues().filter(locMatch);
 
 function Hero() {
@@ -299,7 +397,7 @@ function Hero() {
     <img src="${HERO_IMAGE}" alt="Aerial view of empty San Diego pickleball courts at golden hour" class="absolute inset-0 h-full w-full object-cover" />
     <div class="absolute inset-0 bg-gradient-to-b from-foreground/45 via-foreground/20 to-foreground/75"></div>
     <div class="relative z-10 flex h-full flex-col items-center justify-center px-6 pb-10 text-center">
-      <p class="fade-up mb-5 flex items-center gap-2 rounded-full bg-background/15 px-4 py-2 ${LBL} text-xs text-background backdrop-blur">${ball("h-4 w-4")} ${liveNowCount() ? `${liveNowCount()} spots have open play right now` : "San Diego's court atlas"}</p>
+      <p class="fade-up mb-5 flex items-center gap-2 rounded-full bg-background/15 px-4 py-2 ${LBL} text-xs text-background backdrop-blur">${liveNowCount() ? `<span class="h-2.5 w-2.5 rounded-full bg-open ring-2 ring-white/70"></span> ${liveNowCount()} spots have open play right now` : `${ball("h-4 w-4")} San Diego's court atlas`}</p>
       <h1 class="fade-in font-display leading-[0.92] text-background" style="font-size:clamp(3.4rem,12.5vw,10.5rem);font-weight:700;--d:.2s">
         San Diego
         <span class="block text-primary">In Play<span class="ball-bounce">${ball("ml-[0.05em] inline-block h-[0.22em] w-[0.22em]")}</span></span>
@@ -335,6 +433,7 @@ function FilterBar() {
       <div class="scroll-hint flex items-center gap-1 overflow-x-auto">
         <span class="mr-1 w-14 shrink-0 ${LBL} text-[10px] text-muted-foreground">Access</span>
         ${pill("data-access", "all", "All", accessFilter === "all")}${pill("data-access", "public", "Public", accessFilter === "public")}${pill("data-access", "private", "Private", accessFilter === "private")}
+        <button data-open-only aria-pressed="${onlyOpen}" class="ml-2 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 ${LBL} text-xs transition-colors ${onlyOpen ? "bg-open text-white" : "text-open ring-1 ring-inset ring-open/40 hover:bg-open/10"}">● Open now</button>
         ${loc ? `<button data-loc-clear aria-label="Clear location ${esc(locLabel())}" class="ml-2 flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 ${LBL} text-xs text-primary-foreground">${icon.mapPin("h-3.5 w-3.5")} ${esc(locLabel())} <span aria-hidden="true">✕</span></button>` : ""}
       </div>
     </div>
@@ -390,7 +489,7 @@ function VenueCard(v, i, stagger = true) {
     <div class="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/70 to-foreground/5"></div>
     <div class="absolute left-4 right-4 top-4 flex items-start justify-between gap-2">
       <span class="flex h-9 w-9 items-center justify-center rounded-full bg-primary font-display text-sm text-primary-foreground">${i + 1}</span>
-      <span class="flex flex-wrap justify-end gap-1.5">${unconfirmedChip(v, true)}${accessChip(v, true)}</span>
+      <span class="flex flex-wrap justify-end gap-1.5">${openChip(v, true)}${distChip(v)}${unconfirmedChip(v, true)}${accessChip(v, true)}</span>
     </div>
     <div class="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
       <p class="mb-1.5 ${LBL} text-[11px] text-pop">${esc(v.area)}</p>
@@ -407,7 +506,8 @@ const accessWord = () => (accessFilter === "all" ? "" : accessFilter + " ");
 const sectionTitle = (html) => `<h2 class="font-display text-5xl leading-[0.95] text-foreground sm:text-7xl">${html}</h2>`;
 
 function Featured(n) {
-  const list = loc ? sportVenues().sort(byScore).slice(0, 6) : sportVenues().filter((v) => v.featured).sort(byScore);
+  const near = nearOn();
+  const list = near ? order(sportVenues()).slice(0, 9) : loc || onlyOpen ? order(sportVenues()).slice(0, 6) : sportVenues().filter((v) => v.featured).sort(byScore);
   const sport = sportOf(currentSport);
   return `
   <section id="courts" class="relative bg-secondary px-6 pb-20 pt-14 sm:pb-28 sm:pt-16">
@@ -416,12 +516,17 @@ function Featured(n) {
       <div class="mb-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           ${eyebrow(`${pad2(n)} · The Court Ledger`)}
-          ${sectionTitle(`Featured<br>courts<span class="text-pop">.</span>`)}
+          ${sectionTitle(`${near ? "Closest" : onlyOpen ? "Open now" : "Featured"}<br>courts<span class="text-pop">.</span>`)}
         </div>
-        <p class="max-w-sm font-body text-base text-muted-foreground ${list.length ? "" : "hidden"}">The ${list.length === 1 ? "top" : `${list.length} ${loc ? "top" : "standout"}`} ${accessWord()}${sport.label.toLowerCase()} ${list.length === 1 ? "venue" : "venues"}${whereWord()}, ranked by how good the courts are${hasOpenPlay(currentSport) ? " and how many days a week they run open play" : ""}.</p>
+        <div class="max-w-sm ${list.length ? "" : "hidden"}">
+          <p class="font-body text-base text-muted-foreground">${near
+            ? `The ${list.length} ${accessWord()}${sport.label.toLowerCase()} ${list.length === 1 ? "venue" : "venues"}${whereWord()} closest to you${onlyOpen ? " that are open right now" : ""}.`
+            : `The ${list.length === 1 ? "top" : `${list.length} ${loc || onlyOpen ? "top" : "standout"}`} ${accessWord()}${sport.label.toLowerCase()} ${list.length === 1 ? "venue" : "venues"}${whereWord()}${onlyOpen ? " open right now" : ""}, ranked by how good the courts are${hasOpenPlay(currentSport) ? " and how many days a week they run open play" : ""}.`}</p>
+          ${userLoc ? "" : `<button data-near class="mt-3 flex items-center gap-1.5 ${LBL} text-xs text-pop underline underline-offset-4">${icon.mapPin("h-4 w-4")} Show the closest courts first</button>`}
+        </div>
       </div>
       ${list.length ? `<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">${list.map((v, i) => VenueCard(v, i)).join("")}</div>`
-        : emptyState(loc ? `No ${accessWord()}${sport.noun}${whereWord()} yet. Try another location, sport or access setting.` : `No featured ${accessWord()}${sport.noun} yet. ${accessFilter === "public" ? "We haven't confirmed any free public ones. Try Private, or tell us about one on the Contact page." : "Try switching the Access filter."}`)}
+        : emptyState(onlyOpen ? `No ${accessWord()}${sport.noun}${whereWord()} are open right now. Turn off “Open now” to see them all.` : loc ? `No ${accessWord()}${sport.noun}${whereWord()} yet. Try another location, sport or access setting.` : `No featured ${accessWord()}${sport.noun} yet. ${accessFilter === "public" ? "We haven't confirmed any free public ones. Try Private, or tell us about one on the Contact page." : "Try switching the Access filter."}`)}
     </div>
   </section>`;
 }
@@ -431,12 +536,13 @@ function OpenPlay(n) {
   const all = sportVenues().filter((v) => v.sessions.length);
   const isToday = currentDay === TODAY;
   const rank = (v) => { const st = v.sessions.filter((s) => s.days.includes(currentDay)).map(sessionState); return st.includes("live") ? 0 : st.includes("soon") ? 1 : st.includes("later") || st.includes(null) ? 2 : 3; };
-  const today = all.filter((v) => v.playDays.includes(currentDay)).sort((a, b) => (isToday ? rank(a) - rank(b) : 0) || byScore(a, b));
+  const ended = (v) => (isToday && rank(v) === 3 ? 1 : 0);
+  const today = order(all.filter((v) => v.playDays.includes(currentDay))).sort((a, b) => ended(a) - ended(b) || (nearOn() || !isToday ? 0 : rank(a) - rank(b)));
   const liveCount = isToday ? today.filter((v) => rank(v) === 0).length : 0;
   const stateChip = (s) => {
     if (!isToday) return "";
     const st = sessionState(s), r = parseRange(s.time);
-    return st === "live" ? `<span class="${CHIP} bg-primary text-primary-foreground">● On now · until ${fmtTime(r[1])}</span>`
+    return st === "live" ? `<span class="${CHIP} bg-open text-white">● Open now · until ${ENDS_AT_DUSK.test(s.time) ? "dusk" : fmtTime(r[1])}</span>`
       : st === "soon" ? `<span class="${CHIP} bg-background/20 text-background">Starts in ${r[0] - nowMinutes()} min</span>`
       : st === "done" ? `<span class="${CHIP} bg-background/10 text-background/50">Ended</span>` : "";
   };
@@ -458,7 +564,7 @@ function OpenPlay(n) {
           return `<button data-day="${d}" role="tab" aria-selected="${on}" class="flex shrink-0 items-center gap-2 rounded-full py-2 pl-4 pr-2 ${LBL} text-xs transition-colors ${on ? "bg-primary text-primary-foreground" : "bg-background/10 text-background hover:bg-background/20"}">${d}${d === TODAY ? " · today" : ""}<span class="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] ${on ? "bg-foreground text-background" : "bg-background/15 text-background/80"}">${count}</span></button>`;
         }).join("")}
       </div>
-      <p class="mb-5 flex flex-wrap items-center gap-3 ${LBL} text-[11px] text-background/60"><span>${today.length} ${today.length === 1 ? "place" : "places"} with open play on ${DAY_NAMES[currentDay]}</span>${liveCount ? `<span class="${CHIP} bg-primary text-primary-foreground">● ${liveCount} on right now</span>` : ""}</p>
+      <p class="mb-5 flex flex-wrap items-center gap-3 ${LBL} text-[11px] text-background/60"><span>${today.length} ${today.length === 1 ? "place" : "places"} with open play on ${DAY_NAMES[currentDay]}</span>${liveCount ? `<span class="${CHIP} bg-open text-white">● ${liveCount} open right now</span>` : ""}</p>
       ${today.length ? `<ul class="space-y-2">
         ${(showAllPlay ? today : today.slice(0, 10)).map((v) => `
           <li>
@@ -466,7 +572,7 @@ function OpenPlay(n) {
               <div>
                 <h3 class="font-display text-2xl leading-tight transition-colors group-hover:text-pop">${esc(v.name)}</h3>
                 <p class="mt-2 flex flex-wrap items-center gap-2 font-body text-sm text-background/70">
-                  ${accessChip(v, true)}<span>${esc(v.area)}</span>${v.cost ? `<span>· ${esc(v.cost)}</span>` : ""}
+                  ${accessChip(v, true)}${distChip(v)}<span>${esc(v.area)}</span>${v.cost ? `<span>· ${esc(v.cost)}</span>` : ""}
                 </p>
               </div>
               <ul class="space-y-1 self-center">
@@ -487,10 +593,8 @@ function OpenPlay(n) {
 
 function DirectoryRows() {
   const q = dirQuery.trim().toLowerCase();
-  const near = sortNear && userLoc;
-  const list = sportVenues().filter((v) => !q || `${v.name} ${v.area}`.toLowerCase().includes(q))
-    .sort((a, b) => (near ? (distOf(a) ?? 9999) - (distOf(b) ?? 9999) : 0) || byScore(a, b));
-  if (!list.length) return emptyState(q ? `Nothing matches “${esc(dirQuery)}”.` : `No ${accessWord()}${sportOf(currentSport).noun} listed${whereWord()} yet. Try another location or access setting.`);
+  const list = order(sportVenues().filter((v) => !q || `${v.name} ${v.area}`.toLowerCase().includes(q)));
+  if (!list.length) return emptyState(q ? `Nothing matches “${esc(dirQuery)}”.` : onlyOpen ? `No ${accessWord()}${sportOf(currentSport).noun}${whereWord()} are open right now. Turn off “Open now” to see them all.` : `No ${accessWord()}${sportOf(currentSport).noun} listed${whereWord()} yet. Try another location or access setting.`);
   const shown = showAllDir || q ? list : list.slice(0, 20);
   return `<ul class="divide-y divide-border border-y border-border">
     ${shown.map((v) => `
@@ -499,9 +603,10 @@ function DirectoryRows() {
         <div class="min-w-0 flex-1">
           <h3 class="font-display text-xl leading-tight text-foreground sm:text-2xl"><a href="#/facility-details/${v.id}" class="transition-colors hover:text-pop">${esc(v.name)}</a></h3>
           <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-body text-sm text-muted-foreground">
-            ${accessChip(v)}${unconfirmedChip(v)}${distLabel(v) ? `<span class="${CHIP} bg-primary text-primary-foreground">${distLabel(v)}</span>` : ""}<span>${esc([v.area, v.courts, v.setting].filter(Boolean).join(" · "))}</span>
+            ${openChip(v)}${distChip(v)}${accessChip(v)}${unconfirmedChip(v)}<span>${esc([v.area, v.courts, v.setting].filter(Boolean).join(" · "))}</span>
           </p>
           ${playSummary(v) ? `<p class="mt-1.5 ${LBL} text-[11px] text-pop">${esc(playSummary(v))}</p>` : ""}
+          ${(openStatus(v) || {}).detail ? `<p class="mt-1 font-body text-sm ${isOpenNow(v) ? "font-bold text-open" : "text-muted-foreground"}">${esc(statusLine(v))}</p>` : ""}
         </div>
         <div class="flex shrink-0 flex-col items-end gap-2 ${LBL} text-[11px]">
           <a href="#/facility-details/${v.id}" class="flex items-center gap-1.5 rounded-full border-2 border-foreground px-3.5 py-1.5 text-foreground transition-colors hover:bg-foreground hover:text-background">Details ${icon.arrowRight("h-3.5 w-3.5")}</a>
@@ -524,7 +629,7 @@ function Directory(n) {
           <div class="mt-5 flex flex-wrap items-center gap-2">
             <span class="${LBL} text-[10px] text-muted-foreground">Sort</span>
             <button data-sort="best" aria-pressed="${!(sortNear && userLoc)}" class="rounded-full px-3.5 py-2 ${LBL} text-[11px] transition-colors ${sortNear && userLoc ? "bg-secondary text-foreground" : "bg-foreground text-background"}">Best first</button>
-            <button data-near aria-pressed="${!!(sortNear && userLoc)}" class="flex items-center gap-1.5 rounded-full px-3.5 py-2 ${LBL} text-[11px] transition-colors ${sortNear && userLoc ? "bg-foreground text-background" : "bg-secondary text-foreground"}">${icon.mapPin("h-3.5 w-3.5")} Nearest to me</button>
+            <button ${userLoc ? "data-sort-near" : "data-near"} aria-pressed="${!!(sortNear && userLoc)}" class="flex items-center gap-1.5 rounded-full px-3.5 py-2 ${LBL} text-[11px] transition-colors ${sortNear && userLoc ? "bg-foreground text-background" : "bg-secondary text-foreground"}">${icon.mapPin("h-3.5 w-3.5")} Nearest to me</button>
             ${locMsg ? `<span class="font-body text-sm text-muted-foreground">${esc(locMsg)}</span>` : ""}
           </div>
         </div>
@@ -586,6 +691,7 @@ function initMap() {
       <div class="map-pop">
         <p class="map-pop-area">${esc(v.area)} · ${v.access === "public" ? "Public" : "Private club"}${distLabel(v) ? ` · ${distLabel(v)}` : ""}</p>
         <p class="map-pop-name">${esc(v.name)}</p>
+        ${statusLine(v) ? `<p class="map-pop-line ${isOpenNow(v) ? "map-pop-open" : ""}">${isOpenNow(v) ? "● " : ""}${esc(statusLine(v))}</p>` : ""}
         ${playSummary(v) ? `<p class="map-pop-line">${esc(playSummary(v))}</p>` : ""}
         <a class="map-pop-link" href="#/facility-details/${v.id}">Schedule &amp; details →</a>
       </div>`);
@@ -603,8 +709,24 @@ function locateMe() {
   if (!navigator.geolocation) { locMsg = "This browser can't share a location."; return refreshSections(); }
   locMsg = "Finding you…"; refreshSections();
   navigator.geolocation.getCurrentPosition(
-    (pos) => { userLoc = [pos.coords.latitude, pos.coords.longitude]; sortNear = true; locMsg = "Showing the courts closest to you."; refreshSections(); },
-    () => { locMsg = "We couldn't get your location. Check that location access is allowed for this site."; refreshSections(); },
+    (pos) => { userLoc = [pos.coords.latitude, pos.coords.longitude]; sortNear = true; locMsg = "Showing the courts closest to you."; rememberLocation("granted"); refreshSections(); },
+    (err) => { if (err && err.code === 1) rememberLocation("denied"); locMsg = "We couldn't get your location. Check that location access is allowed for this site."; refreshSections(); },
+    { timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+// On arrival, ask for the visitor's location once so the closest courts can go first.
+// If they said no before, don't ask again; the "Use my location" button still works.
+let triedAutoLocate = false;
+function autoLocate() {
+  if (triedAutoLocate || userLoc || !navigator.geolocation) return;
+  triedAutoLocate = true;
+  let saved = ""; try { saved = localStorage.getItem("kc-location") || ""; } catch {}
+  if (saved === "denied") return;
+  const redraw = () => { if (document.getElementById("sport-sections")) refreshSections(); };
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { userLoc = [pos.coords.latitude, pos.coords.longitude]; sortNear = true; locMsg = "Showing the courts closest to you."; rememberLocation("granted"); redraw(); },
+    (err) => { if (err && err.code === 1) rememberLocation("denied"); },
     { timeout: 10000, maximumAge: 300000 }
   );
 }
@@ -771,7 +893,7 @@ function FacilityDetailPage(id) {
       <div class="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/45 to-foreground/5"></div>
       <div class="absolute bottom-0 left-0 right-0 px-6 pb-16 sm:pb-24">
         <div class="mx-auto max-w-5xl">
-          <p class="mb-3 flex flex-wrap items-center gap-2 ${LBL} text-xs text-pop">${icon.mapPin("h-4 w-4")} ${esc(v.area)} <span class="ml-2 flex gap-1.5">${accessChip(v, true)}${unconfirmedChip(v, true)}</span></p>
+          <p class="mb-3 flex flex-wrap items-center gap-2 ${LBL} text-xs text-pop">${icon.mapPin("h-4 w-4")} ${esc(v.area)} <span class="ml-2 flex flex-wrap gap-1.5">${openChip(v, true)}${distChip(v)}${accessChip(v, true)}${unconfirmedChip(v, true)}</span></p>
           <h1 class="font-display text-4xl leading-[0.98] text-background sm:text-7xl">${esc(v.name)}</h1>
         </div>
       </div>
@@ -784,6 +906,7 @@ function FacilityDetailPage(id) {
         ${v.blurb ? `<p class="mb-12 max-w-3xl font-body text-xl leading-relaxed text-foreground">${esc(v.blurb)}</p>` : ""}
         <div class="grid gap-12 lg:grid-cols-2">
           <div>
+            ${statusLine(v) ? `<p class="mb-6 flex items-center gap-3 rounded-3xl px-5 py-4 font-display text-xl ${isOpenNow(v) ? "bg-open text-white" : "bg-secondary text-foreground"}"><span class="h-3 w-3 shrink-0 rounded-full ${isOpenNow(v) ? "bg-white" : "bg-muted-foreground/50"}"></span>${esc(statusLine(v))}</p>` : ""}
             ${label(v.sessions.length || v.sport === "pickleball" ? "Open Play Schedule" : "Hours")}
             ${schedule}
             ${v.openCourts ? `<p class="${v.sessions.length ? "mt-4 " : ""}${box} p-5 font-body text-base text-foreground"><span class="mb-1 block ${LBL} text-[10px] text-muted-foreground">Open courts</span>${esc(v.openCourts)}</p>` : ""}
@@ -848,7 +971,7 @@ function nearbyCourts(v) {
                 <span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-foreground">${venueImage(o)}</span>
                 <span class="min-w-0 flex-1">
                   <span class="block font-display text-lg leading-tight text-foreground transition-colors group-hover:text-pop">${esc(o.name)}</span>
-                  <span class="mt-1 block font-body text-sm text-muted-foreground">${d < 10 ? d.toFixed(1) : Math.round(d)} mi away · ${o.access === "public" ? "Public" : "Private club"}${o.playDays.length ? ` · open play ${o.playDays.length} day${o.playDays.length > 1 ? "s" : ""} a week` : ""}</span>
+                  <span class="mt-1 block font-body text-sm text-muted-foreground">${d < 10 ? d.toFixed(1) : Math.round(d)} mi away · ${isOpenNow(o) ? `<span class="font-bold text-open">${openStatus(o).label}</span> · ` : ""}${o.access === "public" ? "Public" : "Private club"}${o.playDays.length ? ` · open play ${o.playDays.length} day${o.playDays.length > 1 ? "s" : ""} a week` : ""}</span>
                 </span>
                 ${icon.arrowRight("h-4 w-4 shrink-0 text-muted-foreground")}
               </a></li>`).join("")}
@@ -1018,6 +1141,7 @@ function render() {
   observeReveals();
   initMap();
   initVenueMap();
+  if (path === "/" || homeSection) autoLocate();
   const v = detail && findVenue(decodeURIComponent(detail[1]));
   const names = { "/about": "About", "/faq": "FAQ", "/contact": "Contact", "/facility-details": "All courts" };
   document.title = v ? `${v.name} — Kinetic Court SD` : names[path] ? `${names[path]} — Kinetic Court SD` : "San Diego : In Play — A Pickleball Court Atlas";
@@ -1044,6 +1168,7 @@ app.addEventListener("click", (e) => {
   if ((b = pick("data-sport"))) { currentSport = b.dataset.sport; dirQuery = ""; showAllPlay = showAllDir = false; return refreshSections(true); }
   if ((b = pick("data-access"))) { accessFilter = b.dataset.access; return refreshSections(); }
   if ((b = pick("data-day"))) { currentDay = b.dataset.day; showAllPlay = false; return refreshSections(); }
+  if (pick("data-open-only")) { onlyOpen = !onlyOpen; showAllPlay = showAllDir = false; return refreshSections(); }
   if ((b = pick("data-loctab"))) { locTab = b.dataset.loctab; return refreshSections(); }
   if (pick("data-loc-clear")) { loc = null; zipQuery = ""; dirQuery = ""; showAllPlay = showAllDir = false; return refreshSections(); }
   if ((b = pick("data-loc"))) {
@@ -1057,6 +1182,7 @@ app.addEventListener("click", (e) => {
   if (pick("data-more-dir")) { showAllDir = true; document.getElementById("dir-list").innerHTML = DirectoryRows(); return; }
   if (pick("data-share")) return shareVenue();
   if (pick("data-sort")) { sortNear = false; locMsg = ""; return refreshSections(); }
+  if (pick("data-sort-near") && userLoc) { sortNear = true; return refreshSections(); }
   if ((b = pick("data-menu")) || pick("data-menu-link")) {
     const menu = document.getElementById("phone-menu"), open = b ? menu.classList.toggle("hidden") === false : (menu.classList.add("hidden"), false);
     document.querySelector("[data-menu]").setAttribute("aria-expanded", String(open));
