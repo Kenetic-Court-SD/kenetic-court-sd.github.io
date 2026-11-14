@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kinetic Court SD logo: a palm tree with a pickleball as the sun">
   <!-- pickleball sun -->
-  <circle cx="40" cy="24" r="17" fill="#EFC14A"/>
-  <g fill="#D9A02B">
+  <circle cx="40" cy="24" r="17" fill="#F7C531"/>
+  <g fill="#C99A12">
     <circle cx="40" cy="24" r="2"/>
     <circle cx="40" cy="14" r="1.8"/><circle cx="40" cy="34" r="1.8"/>
     <circle cx="30" cy="24" r="1.8"/><circle cx="50" cy="24" r="1.8"/>

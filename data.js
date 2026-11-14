@@ -35,11 +35,28 @@ const CITY_TENNIS_SRC = { label: "City of San Diego tennis courts page", url: CI
 const BYO = "Bring your own net and equipment.";
 const FCFS = "First come, first served · 7:30 am to dusk · " + BYO;
 
+// Real photos from Wikimedia Commons (free licenses). Resized and cropped to fit.
+// A venue uses one by setting `photo: "<key>"`. `area: true` means the photo shows the
+// surroundings, not the venue's courts or building.
+const C = "https://commons.wikimedia.org/wiki/File:";
+const PHOTOS = {
+  "lajolla-rec": { src: "images/photos/lajolla-rec.jpg", shows: "La Jolla Recreation Center building", author: "Mollymcc", license: "CC0", licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/", page: C + "La_Jolla_Recreation_Center.jpg" },
+  "rb-glassman": { src: "images/photos/rb-glassman.jpg", shows: "Main entrance of the recreation center", author: "Lonnez", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0", page: C + "Rancho_Bernardo_Glassman_Recreation_Center_main_entrance.jpg" },
+  "muni-gym": { src: "images/photos/muni-gym.jpg", shows: "Sign in front of the Municipal Gym", author: "Another Believer", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0", page: C + "San_Diego,_2016_-_560.jpg" },
+  "rimac": { src: "images/photos/rimac.jpg", shows: "North Campus field at RIMAC, UC San Diego", author: "Tktktk", license: "CC BY 3.0", licenseUrl: "https://creativecommons.org/licenses/by/3.0", page: C + "North_Campus_Field_at_RIMAC_and_LionTree_Arena,_UCSD.jpg" },
+  "scripps-ranch-park": { src: "images/photos/scripps-ranch-park.jpg", shows: "Entrance sign of Scripps Ranch Community Park", author: "Lonnez", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0", page: C + "Scripps_Ranch_Community_Park_entrance_sign.jpg" },
+  "lake-murray": { src: "images/photos/lake-murray.jpg", area: true, shows: "Cowles Mountain over Lake Murray", author: "Bill Rand", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0", page: C + "Cowles_Mountain_over_Lake_Murray_in_San_Diego_2009.jpg" },
+  "morley-field": { src: "images/photos/morley-field.jpg", area: true, shows: "Aerial view of Morley Field and the area around it", author: "Joe Mabel", license: "CC BY 3.0", licenseUrl: "https://creativecommons.org/licenses/by/3.0", page: C + "Aerial_-_San_Diego,_CA_-_Morley_Field_and_vicinity_01.jpg" },
+  "robb-field": { src: "images/photos/robb-field.jpg", area: true, shows: "Entrance to Robb Field at Bacon Street", author: "RightCowLeftCoast", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0", page: C + "Robb_Field.jpg" },
+};
+
 // Fields:
 //   access   "public" (city park / rec center) or "private" (club, membership or pay-to-play)
 //   wow      1–5, how good-looking / special the venue is. Used with open play days to rank.
 //   featured true = gets a big photo card on the home page
-//   image    optional photo path. Venues without one get an illustrated court card.
+//   photo    key of a real photo in PHOTOS above
+//   image    path of an illustrative (AI-generated) picture carried over from version 1.
+//            Venues with neither get an illustrated court card.
 //   sessions open play sessions (see S above) · openCourts = always-available courts note
 const VENUES = [
   /* ===================== PICKLEBALL — clubs ===================== */
@@ -135,7 +152,7 @@ const VENUES = [
     pdf: { label: "Activity schedule PDF", url: "https://www.sandiego.gov/sites/default/files/bpacactivityschedule.pdf" },
   },
   {
-    sport: "pickleball", name: "Municipal Gym", area: "Balboa Park", address: "2111 Pan American Plaza, San Diego, CA 92101", phone: "(619) 525-8262",
+    sport: "pickleball", name: "Municipal Gym", photo: "muni-gym", area: "Balboa Park", address: "2111 Pan American Plaza, San Diego, CA 92101", phone: "(619) 525-8262",
     access: "public", featured: true, wow: 4, courts: "9 courts", setting: "Indoor", cost: "Free",
     blurb: "The biggest indoor public site in the city: nine courts inside the historic gym on Pan American Plaza.",
     sessions: [S("Mon Wed", "11:30 am – 3:00 pm", "Indoor"), S("Sat", "12:00 – 4:00 pm", "Indoor", "1 court only")],
@@ -144,13 +161,15 @@ const VENUES = [
   },
   {
     sport: "pickleball", name: "Colina del Sol Recreation Center", area: "Colina del Sol", address: "5319 Orange Ave, San Diego, CA 92115", phone: "(619) 235-1144",
-    access: "public", wow: 3, courts: "4 outdoor + 3 indoor courts", setting: "Indoor & outdoor", cost: "Free",
+    access: "public", featured: true, wow: 3, courts: "4 outdoor + 3 indoor courts", setting: "Indoor & outdoor", cost: "Free",
+    blurb: "Four outdoor courts open every day from morning until 10 pm, plus indoor sessions twice a week.",
     sessions: [S(EVERY_DAY, "8:00 am – 10:00 pm", "Outdoor"), S("Tue Fri", "11:00 am – 2:00 pm", "Indoor")],
     website: CITY_PB_PDF, source: CITY_SRC,
   },
   {
-    sport: "pickleball", name: "La Jolla Recreation Center", area: "La Jolla", address: "615 Prospect St, La Jolla, CA 92037", phone: "(858) 552-1658",
-    access: "public", wow: 4, courts: "2 courts", setting: "Outdoor", cost: "Free",
+    sport: "pickleball", name: "La Jolla Recreation Center", photo: "lajolla-rec", area: "La Jolla", address: "615 Prospect St, La Jolla, CA 92037", phone: "(858) 552-1658",
+    access: "public", featured: true, wow: 4, courts: "2 courts", setting: "Outdoor", cost: "Free",
+    blurb: "Two courts in the middle of La Jolla village, a short walk from the cove. Open every day until 10 pm.",
     sessions: [S(EVERY_DAY, "8:00 am – 10:00 pm", "Outdoor")],
     website: CITY_PB_PDF, source: CITY_SRC,
   },
@@ -167,7 +186,7 @@ const VENUES = [
     website: CITY_PB_PDF, source: CITY_SRC,
   },
   {
-    sport: "pickleball", name: "Scripps Ranch Recreation Center", area: "Scripps Ranch", address: "11464 Blue Cypress Dr, San Diego, CA 92131", phone: "(858) 538-8085",
+    sport: "pickleball", name: "Scripps Ranch Recreation Center", photo: "scripps-ranch-park", area: "Scripps Ranch", address: "11464 Blue Cypress Dr, San Diego, CA 92131", phone: "(858) 538-8085",
     access: "public", wow: 3, courts: "4 courts", setting: "Indoor", cost: "Free",
     sessions: [S("Mon", "1:30 – 4:30 pm", "Indoor"), S("Wed", "2:00 – 5:00 pm", "Indoor"), S("Thu", "2:00 – 4:45 pm", "Indoor"), S("Fri", "2:00 – 4:15 pm", "Indoor")],
     website: CITY_PB_PDF, source: CITY_SRC,
@@ -207,7 +226,7 @@ const VENUES = [
     website: CITY_PB_PDF, source: CITY_SRC,
   },
   {
-    sport: "pickleball", name: "Rancho Bernardo Glassman Recreation Center", area: "Rancho Bernardo", address: "18448 W Bernardo Dr, San Diego, CA 92127", phone: "(858) 538-8129",
+    sport: "pickleball", name: "Rancho Bernardo Glassman Recreation Center", photo: "rb-glassman", area: "Rancho Bernardo", address: "18448 W Bernardo Dr, San Diego, CA 92127", phone: "(858) 538-8129",
     access: "public", wow: 2, courts: "3 courts", setting: "Indoor", cost: "Free",
     sessions: [S("Tue Thu", "10:00 am – 12:00 pm", "Indoor"), S("Sat", "9:00 – 11:00 am", "Indoor")],
     website: CITY_PB_PDF, source: CITY_SRC,
@@ -307,15 +326,15 @@ const VENUES = [
     website: "https://www.barnestenniscenter.com", source: { label: "barnestenniscenter.com", url: "https://www.barnestenniscenter.com" },
   },
   {
-    sport: "tennis", name: "Morley Field Sports Complex", area: "Balboa Park", address: "2221 Morley Field Dr, San Diego, CA 92104", phone: "(619) 295-9278",
+    sport: "tennis", name: "Morley Field Sports Complex", photo: "morley-field", area: "Balboa Park", address: "2221 Morley Field Dr, San Diego, CA 92104", phone: "(619) 295-9278",
     access: "public", accessNote: "Public courts run by Balboa Tennis Club — a day fee may apply", featured: true, wow: 5,
     courts: "25 courts", setting: "Outdoor", lights: "Lit", cost: "Check for day fee",
     blurb: "The largest public tennis facility in the city, at the north-east corner of Balboa Park.",
     hours: "Mon–Fri 8 am – 8 pm · Sat–Sun 8 am – 6 pm", website: CITY_TENNIS, source: CITY_TENNIS_SRC,
   },
   {
-    sport: "tennis", name: "Robb Athletic Field", area: "Ocean Beach", address: "2525 Bacon St, San Diego, CA 92107", phone: "(619) 531-1563",
-    access: "public", accessNote: "Public courts run by Peninsula Tennis Club — a day fee may apply", featured: true, wow: 4, image: "images/abb855591.png",
+    sport: "tennis", name: "Robb Athletic Field", photo: "robb-field", area: "Ocean Beach", address: "2525 Bacon St, San Diego, CA 92107", phone: "(619) 531-1563",
+    access: "public", accessNote: "Public courts run by Peninsula Tennis Club — a day fee may apply", featured: true, wow: 4,
     courts: "12 courts", setting: "Outdoor", lights: "Lit", cost: "Check for day fee",
     blurb: "Twelve lighted courts by the San Diego River estuary in Ocean Beach.",
     hours: "Every day 8 am – 8 pm", website: "https://www.peninsulatennis.org", source: CITY_TENNIS_SRC,
@@ -332,7 +351,7 @@ const VENUES = [
     hours: "Every day, dawn – 9 pm", website: CITY_TENNIS, source: CITY_TENNIS_SRC,
   },
   {
-    sport: "tennis", name: "Lake Murray Park", area: "San Carlos", address: "7003 Murray Park Dr, San Diego, CA 92119", phone: "(619) 469-3232",
+    sport: "tennis", name: "Lake Murray Park", photo: "lake-murray", area: "San Carlos", address: "7003 Murray Park Dr, San Diego, CA 92119", phone: "(619) 469-3232",
     access: "public", accessNote: "Public courts run by a tennis club — a day fee may apply", featured: true, wow: 4,
     courts: "10 courts", setting: "Outdoor", lights: "Lit", cost: "Check for day fee",
     hours: "Mon–Thu 8 am – 10 pm · Fri 7 am – 8 pm · Sat–Sun 8 am – 8 pm", website: CITY_TENNIS, source: CITY_TENNIS_SRC,
@@ -398,7 +417,7 @@ const VENUES = [
 
   /* ===================== RACQUETBALL ===================== */
   {
-    sport: "racquetball", name: "UC San Diego RIMAC", area: "La Jolla", address: "9860 Hopkins Dr, La Jolla, CA 92093", phone: "(858) 534-3557",
+    sport: "racquetball", name: "UC San Diego RIMAC", photo: "rimac", area: "La Jolla", address: "9860 Hopkins Dr, La Jolla, CA 92093", phone: "(858) 534-3557",
     access: "private", accessNote: "Community day pass available", featured: true, wow: 4,
     courts: "Indoor racquetball and squash courts", setting: "Indoor", cost: "$25 day pass · $55 for 30 days",
     blurb: "University courts that anyone can book with a day pass. Bookings open three days ahead.",
@@ -431,7 +450,7 @@ const VENUES = [
     courts: "Squash courts", setting: "Indoor", cost: "See website", website: "https://sdsquash.com", verified: false,
   },
   {
-    sport: "squash", name: "UC San Diego RIMAC (Squash)", area: "La Jolla", address: "9860 Hopkins Dr, La Jolla, CA 92093", phone: "(858) 534-3557",
+    sport: "squash", name: "UC San Diego RIMAC (Squash)", photo: "rimac", area: "La Jolla", address: "9860 Hopkins Dr, La Jolla, CA 92093", phone: "(858) 534-3557",
     access: "private", accessNote: "Community day pass available", wow: 3, courts: "Indoor squash courts", setting: "Indoor", cost: "$25 day pass · $55 for 30 days",
     hours: "Mon–Fri 6 am – 11 pm · Sat–Sun 8 am – 11 pm", website: "https://recreation.ucsd.edu/facilities/", source: { label: "recreation.ucsd.edu", url: "https://recreation.ucsd.edu/memberships/" },
   },
