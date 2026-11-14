@@ -140,7 +140,7 @@ const VENUES = [
   },
   {
     sport: "pickleball", name: "Carmel Mountain Ranch / Sabre Springs Recreation Center", area: "Carmel Mountain", address: "10162 Rancho Carmel Dr, San Diego, CA 92128", phone: "(858) 538-8100",
-    access: "public", featured: true, wow: 3, courts: "6 indoor + 3 outdoor courts", setting: "Indoor & outdoor", cost: "Free",
+    access: "public", wow: 3, courts: "6 indoor + 3 outdoor courts", setting: "Indoor & outdoor", cost: "Free",
     blurb: "Six indoor courts with open play five days a week, plus three first-come outdoor courts.",
     sessions: [S("Tue", "4:00 – 6:00 pm", "Indoor"), S("Wed", "9:00 – 11:55 am", "Indoor"), S("Thu", "2:00 – 5:55 pm", "Indoor"), S("Fri", "4:00 – 6:55 pm", "Indoor"), S("Sat", "9:00 – 11:55 am", "Indoor")],
     openCourts: "3 outdoor courts, first come, first served. " + BYO,
