@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>San Diego : In Play — A Pickleball Court Atlas</title>
+  <link rel="icon" href="images/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,700;1,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    const c = (v) => `hsl(var(--${v}) / <alpha-value>)`;
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            background: c("background"),
+            foreground: c("foreground"),
+            primary: { DEFAULT: c("primary"), foreground: c("primary-foreground") },
+            secondary: { DEFAULT: c("secondary"), foreground: c("secondary-foreground") },
+            muted: { DEFAULT: c("muted"), foreground: c("muted-foreground") },
+            destructive: c("destructive"),
+            border: c("border"),
+            input: c("input"),
+            ring: c("ring"),
+          },
+          fontFamily: {
+            display: ["Fraunces", "ui-serif", "Georgia", "serif"],
+            body: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+            mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      --background: 0 0% 99%;
+      --foreground: 203 33% 15%;
+      --primary: 14 61% 57%;
+      --primary-foreground: 0 0% 99%;
+      --secondary: 115 19% 90%;
+      --secondary-foreground: 203 33% 15%;
+      --muted: 115 19% 90%;
+      --muted-foreground: 203 20% 35%;
+      --destructive: 14 61% 47%;
+      --border: 203 20% 86%;
+      --input: 203 20% 86%;
+      --ring: 14 61% 57%;
+    }
+    * { border-color: hsl(var(--border)); }
+    body {
+      margin: 0;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-display-italic { font-family: "Fraunces", ui-serif, Georgia, serif; font-style: italic; font-weight: 900; }
+    .mesh-overlay {
+      background-image: linear-gradient(90deg, #1a29330a 1px, #0000 1px), linear-gradient(#1a29330a 1px, #0000 1px);
+      background-size: 44px 44px;
+    }
+    .netline {
+      background-image: repeating-linear-gradient(to right, hsl(var(--foreground)) 0, hsl(var(--foreground)) 1px, transparent 1px, transparent 14px);
+    }
+    .hard-shadow { box-shadow: 14px 14px #1a29331f; }
+    .hard-shadow-clay { box-shadow: 10px 10px #d46e4ed9; }
+
+    /* Entrance animations (stand-ins for the original Framer Motion effects) */
+    .fade-up { opacity: 0; transform: translateY(var(--fy, 10px)); animation: fadeUp .8s ease-out forwards; animation-delay: var(--d, 0s); }
+    .fade-in { opacity: 0; animation: fadeIn 1s ease-out forwards; animation-delay: var(--d, 0s); }
+    @keyframes fadeUp { to { opacity: 1; transform: none; } }
+    @keyframes fadeIn { to { opacity: 1; } }
+    .bob { animation: bob 1.8s ease-in-out infinite; }
+    @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+
+    .reveal { opacity: 0; transform: translateY(var(--ry, 40px)); transition: opacity .6s ease-out, transform .6s ease-out; transition-delay: var(--d, 0s); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    .faq-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .2s ease-out; }
+    .faq-item.open .faq-body { grid-template-rows: 1fr; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fade-up, .fade-in, .reveal { opacity: 1; transform: none; animation: none; transition: none; }
+      .bob { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
