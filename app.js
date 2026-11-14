@@ -261,6 +261,9 @@ let userLoc = null;      // the visitor's [lat, lng] once they press "Near me"
 let sortNear = false;    // list the directory nearest first
 let locMsg = "";         // message shown under the Near me button
 let mapObj = null;
+let showAllPlay = false; // open play list: first 10, or everything
+let showAllDir = false;  // directory: first 20, or everything
+const moreButton = (attr, n, what) => `<div class="mt-6 text-center"><button ${attr} class="${BTN} border-2 border-current">Show all ${n} ${what} ${icon.chevronDown("h-4 w-4")}</button></div>`;
 const distOf = (v) => (userLoc && v.geo ? milesBetween(userLoc, v.geo) : null);
 const distLabel = (v) => { const d = distOf(v); return d === null ? "" : `${d < 10 ? d.toFixed(1) : Math.round(d)} mi`; };
 let currentSport = "pickleball";
@@ -288,6 +291,7 @@ function Hero() {
         <a href="#/open-play" class="${BTN_SUN}">Find open play today ${icon.arrowRight("h-4 w-4")}</a>
         <a href="#/schedules" class="${BTN_LINE_DARK}">Official schedules</a>
       </div>
+      <p class="fade-up mt-6 ${LBL} text-[11px] text-background/80" style="--d:1.1s">${VENUES.length} courts and clubs · ${VENUES.filter((v) => v.access === "public").length} public · ${VENUES.filter((v) => v.sport === "pickleball" && v.playDays.includes(TODAY)).length} with pickleball open play today</p>
     </div>
     <div class="fade-in absolute bottom-16 left-1/2 z-10 -translate-x-1/2 text-background/80 sm:bottom-24" style="--d:1.2s">
       <div class="bob flex flex-col items-center gap-1">
@@ -394,7 +398,7 @@ function OpenPlay(n) {
       </div>
       <p class="mb-5 flex flex-wrap items-center gap-3 ${LBL} text-[11px] text-background/60"><span>${today.length} ${today.length === 1 ? "place" : "places"} with open play on ${DAY_NAMES[currentDay]}</span>${liveCount ? `<span class="${CHIP} bg-primary text-primary-foreground">● ${liveCount} on right now</span>` : ""}</p>
       ${today.length ? `<ul class="space-y-2">
-        ${today.map((v) => `
+        ${(showAllPlay ? today : today.slice(0, 10)).map((v) => `
           <li>
             <a href="#/facility-details/${v.id}" class="group grid gap-3 rounded-3xl bg-background/[0.06] px-5 py-4 transition-colors hover:bg-background/[0.12] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-8 sm:px-6">
               <div>
@@ -413,7 +417,7 @@ function OpenPlay(n) {
               </ul>
             </a>
           </li>`).join("")}
-      </ul>` : `<p class="rounded-3xl border-2 border-dashed border-background/25 px-6 py-10 text-center font-body text-base text-background/75">No ${accessWord()}open play listed for ${DAY_NAMES[currentDay]}. Try another day or switch the Access filter.</p>`}
+      </ul>${!showAllPlay && today.length > 10 ? moreButton("data-more-play", today.length, "places") : ""}` : `<p class="rounded-3xl border-2 border-dashed border-background/25 px-6 py-10 text-center font-body text-base text-background/75">No ${accessWord()}open play listed for ${DAY_NAMES[currentDay]}. Try another day or switch the Access filter.</p>`}
       <p class="mt-8 font-body text-sm text-background/60">Public hours: City of San Diego pickleball list, updated 8/29/2026. Club hours: each club's website, checked ${DATA_CHECKED}. <a href="#/schedules" class="underline underline-offset-4 hover:text-pop">See the official schedules</a>.</p>
     </div>
   </section>`;
@@ -425,8 +429,9 @@ function DirectoryRows() {
   const list = sportVenues().filter((v) => !q || `${v.name} ${v.area}`.toLowerCase().includes(q))
     .sort((a, b) => (near ? (distOf(a) ?? 9999) - (distOf(b) ?? 9999) : 0) || byScore(a, b));
   if (!list.length) return emptyState(q ? `Nothing matches “${esc(dirQuery)}”.` : `No ${accessWord()}${sportOf(currentSport).noun} listed yet. Try switching the Access filter.`);
+  const shown = showAllDir || q ? list : list.slice(0, 20);
   return `<ul class="divide-y divide-border border-y border-border">
-    ${list.map((v) => `
+    ${shown.map((v) => `
       <li class="flex items-center gap-4 py-4 sm:gap-5">
         <a href="#/facility-details/${v.id}" tabindex="-1" aria-hidden="true" class="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-foreground sm:block">${venueImage(v)}</a>
         <div class="min-w-0 flex-1">
@@ -441,7 +446,7 @@ function DirectoryRows() {
           ${v.pdf ? `<a href="${v.pdf.url}" ${ext} class="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-pop">${icon.file("h-3.5 w-3.5")} Schedule PDF</a>` : ""}
         </div>
       </li>`).join("")}
-  </ul>`;
+  </ul>${shown.length < list.length ? moreButton("data-more-dir", list.length, "courts") : ""}`;
 }
 
 function Directory(n) {
@@ -490,7 +495,7 @@ function MapSection(n) {
           <p class="mt-3 font-body text-sm text-muted-foreground">${esc(locMsg || "Shows the closest courts first. Your location stays on your device.")}</p>
         </div>
       </div>
-      <div id="court-map" class="relative z-0 h-[420px] overflow-hidden rounded-3xl border-2 border-border bg-secondary sm:h-[560px]" role="application" aria-label="Map of ${esc(sportOf(currentSport).label)} courts"></div>
+      <div id="court-map" class="map-box map-box-lg relative z-0 overflow-hidden rounded-3xl border-2 border-border bg-secondary" role="application" aria-label="Map of ${esc(sportOf(currentSport).label)} courts"></div>
       <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-body text-sm text-muted-foreground">
         <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" style="background:${PIN_COLOR.public}"></span> Public</span>
         <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" style="background:${PIN_COLOR.private}"></span> Private club</span>
@@ -524,6 +529,7 @@ function initMap() {
     const nearest = [...list].sort((a, b) => distOf(a) - distOf(b)).slice(0, 5).map((v) => v.geo);
     mapObj.fitBounds([userLoc, ...nearest], { padding: [50, 50], maxZoom: 14 });
   } else if (pts.length) mapObj.fitBounds(pts, { padding: [40, 40], maxZoom: 13 });
+  const m = mapObj; setTimeout(() => m === mapObj && m.invalidateSize(), 300);
 }
 
 function locateMe() {
@@ -693,7 +699,7 @@ function FacilityDetailPage(id) {
     : v.openCourts ? "" : `<p class="rounded-3xl border-2 border-dashed border-border p-6 font-body text-base text-muted-foreground">No set open play times are published for this venue. Check its official site for the latest.</p>`;
 
   return page(`
-    <section class="on-dark relative h-[58vh] min-h-[420px] w-full overflow-hidden bg-foreground">
+    <section class="on-dark relative h-[58vh] max-h-[620px] min-h-[420px] w-full overflow-hidden bg-foreground">
       ${venueImage(v, "", true)}
       <div class="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/45 to-foreground/5"></div>
       <div class="absolute bottom-0 left-0 right-0 px-6 pb-16 sm:pb-24">
@@ -742,12 +748,65 @@ function FacilityDetailPage(id) {
                 ${v.phone ? `<li class="flex gap-3">${icon.phone("mt-1 h-4 w-4 shrink-0 text-pop")}<span>${esc(v.phone)}</span></li>` : ""}
               </ul>
             </div>
+            ${v.geo ? `
+            <div class="mt-10">
+              ${label("Location")}
+              <div id="venue-map" data-venue="${v.id}" class="map-box relative z-0 overflow-hidden rounded-3xl border-2 border-border bg-secondary" role="application" aria-label="Map showing ${esc(v.name)}"></div>
+            </div>` : ""}
+            <div class="mt-4 flex flex-wrap gap-3">
+              ${v.address ? `<a href="${mapsUrl(v.address)}" ${ext} class="${BTN_LINE}">${icon.mapPin("h-4 w-4")} Get directions</a>` : ""}
+              <button data-share class="${BTN_LINE}">${icon.send("h-4 w-4")} <span data-share-label>Share this court</span></button>
+            </div>
             ${v.source ? `<p class="mt-8 font-body text-sm text-muted-foreground">Source: <a href="${v.source.url}" ${ext} class="underline underline-offset-4 hover:text-pop">${esc(v.source.label)}</a>. Last checked ${DATA_CHECKED}.</p>` : ""}
             <p class="mt-3 font-body text-sm text-muted-foreground">${pictureNote(v)}</p>
           </div>
         </div>
+        ${nearbyCourts(v)}
       </div>
     </section>`);
+}
+
+// The four closest other venues for the same sport.
+function nearbyCourts(v) {
+  if (!v.geo) return "";
+  const near = VENUES.filter((o) => o !== v && o.sport === v.sport && o.geo && !o.closed)
+    .map((o) => [milesBetween(v.geo, o.geo), o]).sort((a, b) => a[0] - b[0]).slice(0, 4);
+  if (!near.length) return "";
+  return `
+        <div class="mt-16">
+          ${eyebrow("Nearby " + sportOf(v.sport).label + " Courts", "text-muted-foreground", "mb-5")}
+          <ul class="grid gap-3 sm:grid-cols-2">
+            ${near.map(([d, o]) => `
+              <li><a href="#/facility-details/${o.id}" class="group flex items-center gap-4 rounded-3xl bg-secondary p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-foreground">${venueImage(o)}</span>
+                <span class="min-w-0 flex-1">
+                  <span class="block font-display text-lg leading-tight text-foreground transition-colors group-hover:text-pop">${esc(o.name)}</span>
+                  <span class="mt-1 block font-body text-sm text-muted-foreground">${d < 10 ? d.toFixed(1) : Math.round(d)} mi away · ${o.access === "public" ? "Public" : "Private club"}${o.playDays.length ? ` · open play ${o.playDays.length} day${o.playDays.length > 1 ? "s" : ""} a week` : ""}</span>
+                </span>
+                ${icon.arrowRight("h-4 w-4 shrink-0 text-muted-foreground")}
+              </a></li>`).join("")}
+          </ul>
+        </div>`;
+}
+
+let venueMapObj = null;
+function initVenueMap() {
+  const el = document.getElementById("venue-map");
+  if (venueMapObj) { venueMapObj.remove(); venueMapObj = null; }
+  if (!el || !window.L) return;
+  const v = findVenue(el.dataset.venue);
+  venueMapObj = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView(v.geo, 14);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(venueMapObj);
+  L.marker(v.geo, { icon: L.divIcon({ className: "court-pin", html: PIN(PIN_COLOR[v.access] || PIN_COLOR.public), iconSize: [30, 40], iconAnchor: [15, 39] }), title: v.name, alt: v.name }).addTo(venueMapObj);
+  const m = venueMapObj; setTimeout(() => m === venueMapObj && m.invalidateSize(), 300);
+}
+
+async function shareVenue() {
+  const label = document.querySelector("[data-share-label]"), url = location.href;
+  try {
+    if (navigator.share) await navigator.share({ title: document.title, url });
+    else { await navigator.clipboard.writeText(url); if (label) label.textContent = "Link copied!"; }
+  } catch { if (label) label.textContent = "Copy the address bar link"; }
 }
 
 /* ---------- faq ---------- */
@@ -870,6 +929,10 @@ function render() {
   if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
   observeReveals();
   initMap();
+  initVenueMap();
+  const v = detail && findVenue(decodeURIComponent(detail[1]));
+  const names = { "/about": "About", "/faq": "FAQ", "/contact": "Contact", "/facility-details": "All courts" };
+  document.title = v ? `${v.name} — Kinetic Court SD` : names[path] ? `${names[path]} — Kinetic Court SD` : "San Diego : In Play — A Pickleball Court Atlas";
 }
 
 // Re-draw the sport sections in place. Keeps the section being read where it is;
@@ -889,10 +952,13 @@ function refreshSections(toTop = false) {
 app.addEventListener("click", (e) => {
   const pick = (attr) => e.target.closest(`[${attr}]`);
   let b;
-  if ((b = pick("data-sport"))) { currentSport = b.dataset.sport; dirQuery = ""; return refreshSections(true); }
+  if ((b = pick("data-sport"))) { currentSport = b.dataset.sport; dirQuery = ""; showAllPlay = showAllDir = false; return refreshSections(true); }
   if ((b = pick("data-access"))) { accessFilter = b.dataset.access; return refreshSections(); }
-  if ((b = pick("data-day"))) { currentDay = b.dataset.day; return refreshSections(); }
+  if ((b = pick("data-day"))) { currentDay = b.dataset.day; showAllPlay = false; return refreshSections(); }
   if (pick("data-near")) return locateMe();
+  if (pick("data-more-play")) { showAllPlay = true; return refreshSections(); }
+  if (pick("data-more-dir")) { showAllDir = true; document.getElementById("dir-list").innerHTML = DirectoryRows(); return; }
+  if (pick("data-share")) return shareVenue();
   if (pick("data-sort")) { sortNear = false; locMsg = ""; return refreshSections(); }
   if ((b = pick("data-menu")) || pick("data-menu-link")) {
     const menu = document.getElementById("phone-menu"), open = b ? menu.classList.toggle("hidden") === false : (menu.classList.add("hidden"), false);

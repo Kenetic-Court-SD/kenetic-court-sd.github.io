@@ -17,9 +17,28 @@ Static site, no build step: open `index.html` in a browser.
 - Public pickleball courts and open play hours: the City of San Diego
   "Pickleball Court Locations" PDF (updated 8/29/2026).
 - Public tennis courts: the City's Tennis Courts page.
+- Public courts in other cities (Carlsbad, Oceanside, Santee, Vista, Escondido,
+  El Cajon, San Marcos, Coronado, Chula Vista, La Mesa, Poway, Encinitas): each
+  city's own website.
 - Clubs: each club's own website.
 - Venues marked `verified: false` in `data.js` have not been confirmed yet and
   show an "Unconfirmed" label on the site.
+
+## Map and "Near me"
+
+The map uses Leaflet with OpenStreetMap tiles. A venue appears on the map when
+its `address` has coordinates in the `GEO` list in `data.js`. "Near me" uses the
+visitor's browser location and never sends it anywhere.
+
+## Contact form
+
+Submissions are sent to Formspree. Create a form at formspree.io and paste its
+link into `FORMSPREE_URL` in `data.js`. While that is empty the form is switched off.
+
+## Photos
+
+Real photos come from Wikimedia Commons under free licenses; credits are in the
+`PHOTOS` list in `data.js` and shown on the About page.
 
 ## Adding a photo for a court
 

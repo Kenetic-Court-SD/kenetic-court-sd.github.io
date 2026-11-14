@@ -117,7 +117,14 @@
     .faq-item.open .faq-body { grid-template-rows: 1fr; }
     .faq-item.open .faq-chevron { transform: rotate(180deg); }
 
+    /* Keyboard focus ring */
+    :focus-visible { outline: 3px solid hsl(var(--ocean)); outline-offset: 2px; }
+    .on-dark :focus-visible { outline-color: hsl(var(--primary)); }
+
     /* Map */
+    .map-box { height: 16rem; }
+    .map-box-lg { height: 420px; }
+    @media (min-width: 640px) { .map-box-lg { height: 560px; } }
     .court-pin { background: none; border: 0; filter: drop-shadow(0 3px 3px hsl(var(--foreground) / .35)); }
     .leaflet-container { font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
     .leaflet-popup-content-wrapper { border-radius: 20px; box-shadow: 0 10px 30px hsl(var(--foreground) / .25); }

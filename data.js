@@ -105,6 +105,17 @@ const VENUES = [
     source: { label: "bobbyriggs.net", url: "https://www.bobbyriggs.net/" },
   },
 
+  {
+    sport: "pickleball", name: "San Diego Pickleball Club", area: "Mission Bay", address: "1775 E Mission Bay Dr, San Diego, CA 92109", phone: "(858) 630-8740",
+    access: "private", accessNote: "Open to everyone, pay per player", featured: true, wow: 5,
+    courts: "8 courts at Mission Bay Resort", setting: "Outdoor", cost: "$10 per player for open play",
+    blurb: "Eight bayside courts at the Mission Bay Resort. Open play every weekday afternoon with a court monitor running the rotation, and all skill levels welcome.",
+    sessions: [S(WEEKDAYS, "1:00 – 5:00 pm", "Outdoor", "No reservation needed, $10")],
+    website: "https://www.sandiegopickleball.com/",
+    scheduleUrl: "https://www.sandiegopickleball.com/open-play/", scheduleLabel: "Open play details",
+    source: { label: "sandiegopickleball.com open play page", url: "https://www.sandiegopickleball.com/open-play/" },
+  },
+
   /* ===================== PICKLEBALL — public (City of San Diego) ===================== */
   {
     sport: "pickleball", name: "Kearny Mesa Recreation Center", area: "Kearny Mesa", address: "3170 Armstrong St, San Diego, CA 92111", phone: "(858) 573-1387",
@@ -417,7 +428,6 @@ const VENUES = [
   // Carried over from version 1 — not confirmed yet
   ...[
     ["Encinitas Community Park", "Encinitas", "public", "https://www.encinitasca.gov"],
-    ["San Diego Pickleball — Mission Bay Resort", "Mission Bay", "private", "https://www.sandiegopickleball.com"],
     ["Coronado Island Marriott", "Coronado", "private", "http://www.impactactivities.com/coronado"],
   ].map(([name, area, access, website]) => ({ sport: "pickleball", name, area, access, wow: 2, setting: "Outdoor", website, verified: false })),
 
@@ -542,8 +552,12 @@ const VENUES = [
 
   /* ===================== SQUASH ===================== */
   {
-    sport: "squash", name: "Access Sports Club", area: "Southeast San Diego", access: "private", accessNote: "Memberships, lessons and clinics", featured: true, wow: 4, image: "images/b066ac985.png",
-    courts: "Squash courts", setting: "Indoor", cost: "Membership", website: "https://www.accesssportsclub.com/squash", verified: false,
+    sport: "squash", name: "Access Sports Club", area: "Southeast San Diego", address: "704 Euclid Ave, San Diego, CA 92114", phone: "(619) 795-8607",
+    access: "private", accessNote: "Memberships and court reservations. Every match supports Access Youth Academy", featured: true, wow: 5, image: "images/b066ac985.png",
+    courts: "8 courts: 7 singles and 1 doubles", setting: "Indoor", cost: "Membership or court reservation",
+    blurb: "San Diego's biggest squash facility, home of the non-profit Access Youth Academy. Also has pickleball courts.",
+    hours: "Mon–Fri 9 am – 9 pm · Sat 9 am – 4:30 pm · Sun 9 am – 3 pm",
+    website: "https://www.accesssportsclub.com/squash/", source: { label: "accesssportsclub.com", url: "https://www.accesssportsclub.com/contact/" },
   },
   {
     sport: "squash", name: "Bay Club Carmel Valley", area: "Carmel Valley", access: "private", accessNote: "Members only", featured: true, wow: 4, image: "images/814205e07.png",
@@ -558,7 +572,6 @@ const VENUES = [
     access: "private", accessNote: "Community day pass available", wow: 3, courts: "Indoor squash courts", setting: "Indoor", cost: "$25 day pass · $55 for 30 days",
     hours: "Mon–Fri 6 am – 11 pm · Sat–Sun 8 am – 11 pm", website: "https://recreation.ucsd.edu/facilities/", source: { label: "recreation.ucsd.edu", url: "https://recreation.ucsd.edu/memberships/" },
   },
-  { sport: "squash", name: "Access Youth Academy", area: "Southeast San Diego", access: "private", wow: 2, courts: "Community squash courts", setting: "Indoor", website: "https://www.accessyouthacademy.org", verified: false },
   { sport: "squash", name: "SoCal Squash League", area: "Countywide", access: "private", wow: 1, courts: "League play", setting: "Indoor", website: "https://www.socalsquash.org", verified: false },
 
   /* ===================== PING PONG ===================== */
@@ -577,13 +590,23 @@ const VENUES = [
     sessions: [S("Mon", "8:00 – 11:00 pm", "Indoor"), S("Thu", "8:00 – 9:30 pm", "Indoor")],
     website: "https://recreation.ucsd.edu/competitive-sports/table-tennis/", source: { label: "recreation.ucsd.edu table tennis", url: "https://recreation.ucsd.edu/competitive-sports/table-tennis/" },
   },
-  { sport: "pingpong", name: "ASLT Table Tennis", area: "Sorrento Valley", access: "private", featured: true, wow: 3, image: "images/39e991f2a.png", courts: "Table tennis club", setting: "Indoor", website: "https://www.aslttabletennis.com", verified: false },
+  {
+    sport: "pingpong", name: "ASLT Table Tennis", area: "Sorrento Valley", address: "11525 Sorrento Valley Rd, Suite A, San Diego, CA 92121", phone: "(858) 259-0066",
+    access: "private", accessNote: "Club open to players of all levels", featured: true, wow: 4, image: "images/39e991f2a.png",
+    courts: "Table tennis club", setting: "Indoor", cost: "See website",
+    blurb: "The After School Learning Tree Table Tennis Club, with training guided by former World Champion Stellan Bengtsson.",
+    hours: "Weekdays 11 am – 3 pm and 8 – 11 pm · Sat 11 am – 11 pm · Sun 11 am – 6 pm",
+    website: "https://www.aslttabletennis.com/", source: { label: "aslttabletennis.com", url: "https://www.aslttabletennis.com/" },
+  },
   { sport: "pingpong", name: "SoCal Table Tennis", area: "San Diego", access: "private", featured: true, wow: 3, image: "images/d1ac7835d.png", courts: "Table tennis club", setting: "Indoor", website: "https://www.socal-tabletennis.com", verified: false },
 ];
 
 // Map coordinates [latitude, longitude] for each venue address, looked up with OpenStreetMap.
 // A venue appears on the map when its `address` is listed here.
 const GEO = {
+  "11525 Sorrento Valley Rd, Suite A, San Diego, CA 92121": [32.9118, -117.23009],
+  "1775 E Mission Bay Dr, San Diego, CA 92109": [32.77919, -117.2108],
+  "704 Euclid Ave, San Diego, CA 92114": [32.71254, -117.08511],
   "10060 Avenida Magnifica, San Diego, CA 92131": [32.90825, -117.08352],
   "1008 Santa Clara Pl, San Diego, CA 92109": [32.78307, -117.24992],
   "10162 Rancho Carmel Dr, San Diego, CA 92128": [32.96625, -117.09013],
@@ -696,6 +719,7 @@ const DOCUMENTS = [
   { group: "Clubs & organizations — open play", items: [
     { title: "Barnes Tennis Center — pickleball open play", note: "Daily sessions, $7. Ladder play Tuesday and Thursday.", kind: "Web", url: "https://www.barnestenniscenter.com/pickleballopenplay" },
     { title: "The HUB San Diego — play options", note: "All-day drop-in play, ladders and round robins.", kind: "Web", url: "https://thehubpickleball.com/play-pickleball" },
+    { title: "San Diego Pickleball Club — open play", note: "Mission Bay Resort. Weekdays 1–5 pm, $10 per player.", kind: "Web", url: "https://www.sandiegopickleball.com/open-play/" },
     { title: "Bobby Riggs Racket & Paddle — open play & ladders", note: "Tuesday ladder, Friday open play, Sunday novice session.", kind: "Web", url: "https://www.bobbyriggs.net/" },
     { title: "Taktika Padel at Barnes — court booking", note: "Padel courts and open matches on Playtomic.", kind: "Web", url: "https://playtomic.com/clubs/taktika-padel-san-diego-barnes-tennis-center" },
     { title: "San Diego Table Tennis Association", note: "Club news, hours and Thursday round robin.", kind: "Web", url: "https://sdtta.org" },
